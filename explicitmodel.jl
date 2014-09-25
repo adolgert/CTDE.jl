@@ -146,7 +146,7 @@ function transition_distribution(model::ExplicitGSPNModel, transition_id)
     dependencies=model.structure.dependencies
     for (place, edge_properties) in dependencies.edge[transition_id]
         #@trace("trans ",place," prop ",edge_properties)
-        mp=get(model.state.marking, place)
+        mp=model.state.marking[place]
         local_marking[edge_properties["local"]]=mp
     end
     transition=model.structure.gspn.node[transition_id]["transition"]

@@ -6,9 +6,9 @@
 # TokenCreator makes tokens and destroys them. This would handle
 # reusing ids, for instance.
 # 
-import Base: length, pop!, get
+import Base: length, pop!, getindex
 export TokenMarking, add_tokens, length
-export int_marking
+export int_marking, getindex
 export TokenState, EmptyToken, IdToken
 
 type TokenContainer{T}
@@ -119,7 +119,7 @@ function length(marking::TokenMarking, place)
 end
 
 # Returns a TokenContainer.
-function get(marking::TokenMarking, place)
+function getindex(marking::TokenMarking, place)
     if haskey(marking.dict, place)
         return marking.dict[place]
     end
@@ -127,7 +127,7 @@ function get(marking::TokenMarking, place)
 end
 
 function take!(marking::TokenMarking, place, dest, n::Int)
-    move!(get(marking, place), dest, n)
+    move!(marking[place], dest, n)
     if length(marking.dict[place])==0
         pop!(marking.dict, place)
     end

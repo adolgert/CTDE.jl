@@ -17,7 +17,37 @@ rng=MersenneTwister(seed)
 model=sirs_birth_death(cnt)
 
 
-function run_until(model, sampling, end_time)
+type OutputObserver
+    observations::Array{(Int,Int,Int,Float64),1}
+    cnt::Int
+    filename::String
+    OutputObserver(name)=new(Array((Int,Int,Int,Float64), 10000), 1, name)
+end
+
+function save(obs::OutputObserver)
+    if obs.cnt>1
+        open(obs.filename, "a") do f
+            writedlm(f, obs.observations[1:(obs.cnt-1)])
+        end
+        obs.cnt=1
+    end
+end
+
+function observe(obs::OutputObserver, state)
+    setindex!(obs.observations, (
+        length(state.marking["s"]),
+        length(state.marking["i"]),
+        length(state.marking["r"]),
+        state.current_time
+        ),
+        obs.cnt)
+    obs.cnt+=1
+    if obs.cnt>length(obs.observations)
+        save(obs)
+    end
+end
+
+function run_until(model, sampling, observer, end_time)
     #sampling=SampleSemiMarkov.FirstReaction()
 
     running=true
@@ -33,12 +63,15 @@ function run_until(model, sampling, end_time)
     	else
     		running=false
     	end
+        observe(observer, model.state)
         steps+=1
     end
     println("steps ", steps, " end time ", trans.time)
 end
 
+observer=OutputObserver("sirs.txt")
 sampling=NextReactionHazards()
 
-@time(run_until(model, sampling, 30.0))
+@time(run_until(model, sampling, observer, 30.0))
+save(observer)
 
