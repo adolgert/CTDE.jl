@@ -10,12 +10,14 @@ function sir_explicit(cnt, params)
     (β, γ)=params
     infect_transition=ConstExplicitTransition(
         (lm, when)->begin
-            hazard=β*length(lm["s"])*length(lm["i"])
+            hazard=β*length(lm["s"])*length(lm["i"])/cnt
+            #println("infect hazard ", hazard, " ", length(lm["s"]), ",", length(lm["i"]))
             TransitionExponential(hazard, when)
         end)
     recover_transition=ConstExplicitTransition(
         (lm, when)->begin
             hazard=γ*length(lm["i"])
+            #println("recover hazard ", hazard, " ", length(lm["i"]))
             TransitionExponential(hazard, when)
         end)
     add_transition(structure, "infect", infect_transition,

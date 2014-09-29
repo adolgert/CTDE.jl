@@ -16,10 +16,11 @@ end
 
 function first_reaction(system, rng)
 	least=NRTransition(nothing, Inf)
-	all_transitions(system, rng) do id, dist, time_delta, randgen
-	  trial_time=timeshiftedcdf(dist, time_delta, randgen)
-	  @debug("SampleSemiMarkov.first_reaction trial_time ",
-	  	trial_time, " id ", id)
+	all_transitions(system, rng) do id, dist, now, randgen
+	  trial_time=rand(dist, now, randgen)
+	  # println("SampleSemiMarkov.first_reaction trial_time ",
+	  # 	trial_time, " id ", id, " now ", now)
+	  @assert(trial_time>=now)
 	  if trial_time<least.time
 	  	least.key=id
 	  	least.time=trial_time
@@ -116,7 +117,7 @@ function enable(propagator::NextReactionHazards, key, distribution, now, rng)
 		record=propagator.transition_state[key]
 		when_fire=implicit_hazard_integral(distribution,
 			record.remaining_exponential_interval, now)
-		@assert(when_fire>now)
+		@assert(when_fire>=now)
 		if record.heap_handle>=0
 			@trace("SampleSemiMarkov.enable keyu ", key, " interval ",
 				record.remaining_exponential_interval, " when ", when_fire,
@@ -135,7 +136,7 @@ function enable(propagator::NextReactionHazards, key, distribution, now, rng)
 	else
 		interval=unit_hazard_interval(rng)
 		firing_time=implicit_hazard_integral(distribution, interval, now)
-		@assert(firing_time>now)
+		@assert(firing_time>=now)
         handle=push!(propagator.firing_queue, NRTransition(key, firing_time))
         @trace("SampleSemiMarkov.enable Adding key ", key, " interval ",
         	interval, " when ", firing_time, " dist ", distribution)

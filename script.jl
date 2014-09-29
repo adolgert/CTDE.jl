@@ -5,17 +5,32 @@ using SemiMarkov
 include("samplemodels.jl")
 cnt=10
 seed=32
+beta=2.0
+gamma=1.0
 if length(ARGS)>0
     cnt=int(ARGS[1])
 end
 if length(ARGS)>1
     seed=int(ARGS[2])
 end
+if length(ARGS)>2
+    beta=float(ARGS[3])
+end
+if length(ARGS)>3
+    gamma=float(ARGS[4])
+end
 
 rng=MersenneTwister(seed)
-#model=sir_explicit(cnt, [0.1, 0.4])
-model=sirs_birth_death(cnt)
+model=sir_explicit(cnt, [beta, gamma])
+R0=beta/gamma
 
+null_observer(state)=nothing
+
+
+function print_observer(state)
+    m=state.marking
+    #println("(",length(m,"s"),", ",length(m,"i"),", ",length(m,"r"),")")
+end
 
 type OutputObserver
     observations::Array{(Int,Int,Int,Float64),1}
@@ -47,7 +62,7 @@ function observe(obs::OutputObserver, state)
     end
 end
 
-function run_until(model, sampling, observer, end_time)
+function run_until(model, sampling, report, end_time)
     #sampling=SampleSemiMarkov.FirstReaction()
 
     running=true
@@ -63,15 +78,38 @@ function run_until(model, sampling, observer, end_time)
     	else
     		running=false
     	end
-        observe(observer, model.state)
+        report(model.state)
         steps+=1
     end
-    println("steps ", steps, " end time ", trans.time)
+    #println("steps ", steps, " end time ", current_time(model))
 end
 
 observer=OutputObserver("sirs.txt")
 sampling=NextReactionHazards()
 
-@time(run_until(model, sampling, observer, 30.0))
-save(observer)
+run_cnt=10000
+final_size=Array(Int, run_cnt)
+final_time=Array(Float64, run_cnt)
+for i in 1:run_cnt
+    model.state=TokenState(int_marking())
+    add_tokens(model.state.marking, "s", cnt-1)
+    add_tokens(model.state.marking, "i", 1)
+    # state->observe(print_observer, state)
+    run_until(model, sampling, print_observer, Inf)
+    final_size[i]=length(model.state.marking, "r")
+    final_time[i]=current_time(model)
+end
+println("R0 ", R0)
+println("average size ", mean(final_size))
+println("average final time ", mean(final_time))
+println("figures from Linda Allen's paper")
+println("http://eaton.math.rpi.edu/csums/papers/epidemic/allenstochasticepidemic.pdf")
+println("R0\tN=20\tN=100")
+vals=[0.5 1.0 2.0 5.0 10.0;
+     1.76 3.34 8.12 15.66 17.98;
+     1.93 6.10 38.34 79.28 89.98]
+for i in 1:3
+    println(vals[1,i],'\t', vals[2,i], '\t', vals[3,i])
+end
+#save(observer)
 

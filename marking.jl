@@ -122,8 +122,10 @@ end
 function getindex(marking::TokenMarking, place)
     if haskey(marking.dict, place)
         return marking.dict[place]
+    else
+        marking.dict[place]=create(marking.token_creator, 0)
+        return marking.dict[place]
     end
-    Array(Any,0)
 end
 
 function take!(marking::TokenMarking, place, dest, n::Int)

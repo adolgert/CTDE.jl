@@ -1,6 +1,6 @@
 
 macro warn(msg...)
-    #apply(println, eval(msg))
+    apply(println, eval(msg))
 end
 
 macro info(msg...)

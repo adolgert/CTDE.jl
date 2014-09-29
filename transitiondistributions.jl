@@ -78,7 +78,7 @@ function rand(distribution::TransitionExponential, now::Float64, rng)
     # We store the distribution for this call. Doing the inverse with
     # a log() is very slow compared to the Ziggurat method, which should
     # be available here.
-    distribution.enabling_time+quantile(distribution.relative_distribution,
+    now+quantile(distribution.relative_distribution,
             rand(rng))
 end
 
