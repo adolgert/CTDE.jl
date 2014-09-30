@@ -1,7 +1,7 @@
 module SemiMarkov
-    include("tracing.jl")
+    using Logging
+    @Logging.configure(level=INFO)
     include("smallgraph.jl")
-    #include("SimpleExponentialGSPN.jl")
     include("samplesemimarkov.jl")
     include("marking.jl")
     include("explicitmodel.jl")

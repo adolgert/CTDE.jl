@@ -1,4 +1,3 @@
-
 macro warn(msg...)
     apply(println, eval(msg))
 end
@@ -8,11 +7,11 @@ macro info(msg...)
 end
 
 macro debug(msg...)
-    #apply(println, eval(msg))
+    apply(println, eval(msg))
 end
 
 macro trace(msg...)
-    #apply(println, eval(msg))
+    apply(println, eval(msg))
 end
 
 # function logging_level(level)

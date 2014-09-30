@@ -124,7 +124,7 @@ function current_time(model::ExplicitGSPNModel)
 end
 
 function current_time!(model::ExplicitGSPNModel, when::Float64)
-    @trace("ExplicitModel.current_time! was ",
+    @debug("ExplicitModel.current_time! was ",
         model.state.current_time, " is ", when)
     model.state.current_time=when
 end
@@ -145,7 +145,7 @@ function transition_distribution(model::ExplicitGSPNModel, transition_id)
     local_marking=Dict{Any,Any}()
     dependencies=model.structure.dependencies
     for (place, edge_properties) in dependencies.edge[transition_id]
-        #@trace("trans ",place," prop ",edge_properties)
+        #@debug("trans ",place," prop ",edge_properties)
         mp=model.state.marking[place]
         local_marking[edge_properties["local"]]=mp
     end
@@ -164,7 +164,7 @@ function all_transitions(enable::Function, model::ExplicitGSPNModel, rng)
         if stoichiometry_satisfied(model, node)
             distribution=transition_distribution(model, node)
         end
-        @trace("ExplicitGSPNModel.all_transitions transition ", node,
+        @debug("ExplicitGSPNModel.all_transitions transition ", node,
                 " ", dict, " ", distribution)
         if distribution!=nothing
             enable(node, distribution, current_time(model), rng)
@@ -178,13 +178,13 @@ function all_transitions(enable::Function, model::ExplicitGSPNModel, rng)
         end
     end
   end
-  @trace("all_transitions enabled ", model.state.enabling_time)
+  @debug("all_transitions enabled ", model.state.enabling_time)
 end
 
 
 function modified_transitions(model::ExplicitGSPNModel, enable::Function,
       disable::Function, rng)
-    @trace("ExplicitGSPNModel.modified_transitions enter ",
+    @debug("ExplicitGSPNModel.modified_transitions enter ",
             model.state.last_fired)
     if model.state.last_fired!=nothing
         gspn=model.structure.gspn
@@ -194,13 +194,13 @@ function modified_transitions(model::ExplicitGSPNModel, enable::Function,
         for p in affected_places
             union!(examine_transitions, Set([t[1] for t in gspn.edge[p]]))
         end
-        @trace("ExplicitGSPNModel.modified_transitions affected ",
+        @debug("ExplicitGSPNModel.modified_transitions affected ",
                 affected_places, " exam_trans ", examine_transitions)
         newly_enabled=Set()
         for t in examine_transitions
             was_enabled=marked_enabled(model.state, t)
             now_enabled=stoichiometry_satisfied(model, t)
-            @trace("ExplicitGSPNModel.modified_transitions t ", t,
+            @debug("ExplicitGSPNModel.modified_transitions t ", t,
                     " was ", was_enabled, " now ", now_enabled)
             if !was_enabled && now_enabled
                 mark_enabled!(model.state, t, current_time(model))
@@ -218,20 +218,18 @@ function modified_transitions(model::ExplicitGSPNModel, enable::Function,
         # also need to have their hazards re-evaluated.
         examine_distributions=Set()
         for p in affected_places
-            union!(examine_distributions, keys(dependencies.node[p]))
+            union!(examine_distributions, keys(dependencies.edge[p]))
         end
         for ht in examine_distributions
-            if (stoichiometry_satisfied(model, ht) &&
-                    marked_enabled(model.state, t))
-                if !(ht in newly_enabled)
-                    dist=transition_distribution(model, ht)
-                    if dist!=nothing
-                        enable(ht, dist, current_time(model), rng)
-                    else
-                        assert(dist!=nothing)
-                    end
-                    # Policy: Do we reset the enabling time?
+            if !(ht in newly_enabled) && (stoichiometry_satisfied(model, ht) &&
+                    marked_enabled(model.state, ht))
+                dist=transition_distribution(model, ht)
+                if dist!=nothing
+                    enable(ht, dist, current_time(model), rng)
+                else
+                    assert(dist!=nothing)
                 end
+                # Policy: Do we reset the enabling time?
             end
         end
     else
@@ -244,9 +242,9 @@ end
 # in order to track which transitions are now enabled.
 function fire(model::ExplicitGSPNModel, id_time::NRTransition)
     transition_id=id_time.key
-    tokens=Dict()
+    tokens=Dict() # Map from the edge to the tokens at a place on the edge.
     for (place, edge_properties) in model.structure.gspn.edge[transition_id]
-        @trace("SimpleEGSPN.fire transition ", transition_id, " place ", place,
+        @debug("SimpleEGSPN.fire transition ", transition_id, " place ", place,
             " edge ", edge_properties)
         stoichiometric_number=edge_properties["stoich"]
         if stoichiometric_number<0
@@ -257,15 +255,15 @@ function fire(model::ExplicitGSPNModel, id_time::NRTransition)
         end
     end
     
-    @trace("SimpleEGSPN.fire in-tokens ", tokens)
+    @debug("SimpleEGSPN.fire in-tokens ", tokens)
     fire_function=model.structure.gspn.node[transition_id]["transition"].fire
     fire_function(tokens)
-    @trace("SimpleEGSPN.fire out-tokens ", tokens)
+    @debug("SimpleEGSPN.fire out-tokens ", tokens)
     all_tokens=empty_container(model.state.marking)
     for (x,y) in tokens
         move!(y, all_tokens, length(y))
     end
-    @trace("SimpleEGSPN.fire all-tokens ", all_tokens)
+    @debug("SimpleEGSPN.fire all-tokens ", all_tokens)
     for (place, edge_properties) in model.structure.gspn.edge[transition_id]
         stoichiometric_number=edge_properties["stoich"]
         if stoichiometric_number>0

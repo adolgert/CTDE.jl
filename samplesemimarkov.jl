@@ -69,23 +69,51 @@ end
 
 function NextReactionHazards()
 	heap=mutable_binary_minheap(NRTransition)
-	@trace("SampleSemiMarkov.NextReactionHazards type ",typeof(heap))
+	@debug("SampleSemiMarkov.NextReactionHazards type ",typeof(heap))
 	state=Dict{Any,TransitionRecord}()
 	NextReactionHazards(heap, state)
 end
 
+function print_next_reaction_hazards(propagator::NextReactionHazards)
+    @debug("NextReactionHazards.firing_queue")
+    for n in propagator.firing_queue.nodes
+        @debug("  ", n.value)
+    end
+    arr=Array(Any,0)
+    for x in keys(propagator.transition_state)
+        push!(arr, x)
+    end
+    sort!(arr)
+    @debug("NextReactionHazards.Transitions")
+    @debug("key  remain  last  hazard te")
+    for trans in arr
+        rec=propagator.transition_state[trans]
+        if rec.distribution!=nothing
+	        p=parameters(rec.distribution)
+    	    @debug(trans, " ", rec.remaining_exponential_interval, " ",
+        	    rec.last_modification_time, " ", p[1], " ", p[2])
+    	else
+    	    @debug(trans, " ", rec.remaining_exponential_interval, " ",
+        	    rec.last_modification_time, " nodist")
+    	end
+    end
+end
+
 # Finds the next one and removes it from queue.
 function choose(propagator::NextReactionHazards, system, rng)
-	@trace("SampleSemiMarkov.choose enter ", typeof(system))
+	@debug("SampleSemiMarkov.choose enter ", current_time(system))
+    print_next_reaction_hazards(propagator)
 	modified_transitions(system,
 		(key, dist, now, randgen)->enable(propagator, key, dist, now, randgen),
 		(key, now)->disable(propagator, key, now),
 		rng
 		)
 	now=current_time(system)
-	@trace("SampleSemiMarkov.choose ", now, " after modified ",
+	@debug("SampleSemiMarkov.choose ", now, " after modified ",
 			propagator.firing_queue)
 	key_time=next(propagator, now, rng)
+	@debug("SampleSemiMarkov.choose current")
+	print_next_reaction_hazards(propagator)
 	if key_time.time!=Inf
 		# Not firing transition. Removing it from internal queue.
 		fire(propagator, key_time.key, now, rng)
@@ -101,7 +129,7 @@ function next(propagator::NextReactionHazards, now, rng)
 	else
 		least=NotFound
 	end
-	@trace("SampleSemiMarkov.next queue length ",
+	@debug("SampleSemiMarkov.next queue length ",
 			length(propagator.firing_queue), " least ", least)
 	NRTransition(least.key, least.time)
 end
@@ -119,7 +147,7 @@ function enable(propagator::NextReactionHazards, key, distribution, now, rng)
 			record.remaining_exponential_interval, now)
 		@assert(when_fire>=now)
 		if record.heap_handle>=0
-			@trace("SampleSemiMarkov.enable keyu ", key, " interval ",
+			@debug("SampleSemiMarkov.enable keyu ", key, " interval ",
 				record.remaining_exponential_interval, " when ", when_fire,
 				" dist ", distribution)
 			update!(propagator.firing_queue, record.heap_handle,
@@ -127,7 +155,7 @@ function enable(propagator::NextReactionHazards, key, distribution, now, rng)
 		else
 			record.heap_handle=push!(propagator.firing_queue,
 				NRTransition(key, when_fire))
-			@trace("SampleSemiMarkov.enable keyp ", key, " interval ",
+			@debug("SampleSemiMarkov.enable keyp ", key, " interval ",
 				record.remaining_exponential_interval, " when ", when_fire,
 				" dist ", distribution)
 		end
@@ -138,7 +166,7 @@ function enable(propagator::NextReactionHazards, key, distribution, now, rng)
 		firing_time=implicit_hazard_integral(distribution, interval, now)
 		@assert(firing_time>=now)
         handle=push!(propagator.firing_queue, NRTransition(key, firing_time))
-        @trace("SampleSemiMarkov.enable Adding key ", key, " interval ",
+        @debug("SampleSemiMarkov.enable Adding key ", key, " interval ",
         	interval, " when ", firing_time, " dist ", distribution)
 		record=TransitionRecord(interval, now, handle, distribution)
 		propagator.transition_state[key]=record
@@ -152,12 +180,14 @@ function disable(propagator::NextReactionHazards, key, now)
 	# which will happen AFTER the state has changed.
 	update!(propagator.firing_queue, record.heap_handle,
 		NRTransition(key, -1))
-	pop!(propagator.firing_queue)
+	todelete=pop!(propagator.firing_queue)
+	@assert(todelete.key==key && todelete.time==-1)
 
+	# Removing the time penalty is what makes this disabling.
 	time_penalty=hazard_integral(record.distribution,
 		record.last_modification_time, now)
 	record.remaining_exponential_interval-=time_penalty
-	@trace("SampleSemiMarkov.fire key ", key, " heap length ",
+	@debug("SampleSemiMarkov.disable key ", key, " heap length ",
 			length(propagator.firing_queue), " time penalty ",
 			time_penalty)
 	record.last_modification_time=now
@@ -174,7 +204,7 @@ function fire(propagator::NextReactionHazards, key, now, rng)
 	removed=pop!(propagator.firing_queue)
 	@assert removed.key==key
 	@assert queue_length-length(propagator.firing_queue)==1
-	@trace("SampleSemiMarkov.fire key ", key, " heap length ",
+	@debug("SampleSemiMarkov.fire key ", key, " heap length ",
 			length(propagator.firing_queue))
 	# Using the same trick for the firing records that we use
 	# with the marking. When something is reset, erase it from

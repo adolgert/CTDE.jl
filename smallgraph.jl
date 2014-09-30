@@ -15,7 +15,7 @@ abstract SmallGraph
 # add_edge(g, 3, 9)
 # g.node["hi"]["name"]=="joe"
 # for target_node, properties in g.edge["chicago"]
-#   @trace("Distance to ", target_node, " is ", properties["distance"])
+#   @debug("Distance to ", target_node, " is ", properties["distance"])
 # end
 #####################################################
 type DirectedGraph <: SmallGraph
@@ -89,7 +89,7 @@ neighbors(g::SmallGraph, node)=keys(g.edge[node])
 # add_edge(g, "chicago", "seattle", {"distance"=>1721, "by"=>"crow"})
 # add_edge(g, "chicago", "seattle", {"distance"=>2069, "by"=>"car"})
 # for target_node, properties in g.edge["chicago"]
-#   @trace("Distance is ", properties["distance"], " by ", properties["by"])
+#   @debug("Distance is ", properties["distance"], " by ", properties["by"])
 # end
 ###############################################################
 type UndirectedMultiGraph <: SmallGraph

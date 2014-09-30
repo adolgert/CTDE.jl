@@ -3,7 +3,7 @@ include("semimarkov.jl")
 using SemiMarkov
 
 include("samplemodels.jl")
-cnt=10
+cnt=100
 seed=32
 beta=2.0
 gamma=1.0
@@ -85,6 +85,7 @@ function run_until(model, sampling, report, end_time)
 end
 
 observer=OutputObserver("sirs.txt")
+#sampling=FirstReaction()
 sampling=NextReactionHazards()
 
 run_cnt=10000
@@ -108,7 +109,7 @@ println("R0\tN=20\tN=100")
 vals=[0.5 1.0 2.0 5.0 10.0;
      1.76 3.34 8.12 15.66 17.98;
      1.93 6.10 38.34 79.28 89.98]
-for i in 1:3
+for i in 1:5
     println(vals[1,i],'\t', vals[2,i], '\t', vals[3,i])
 end
 #save(observer)
