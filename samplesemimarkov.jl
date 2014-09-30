@@ -16,7 +16,8 @@ end
 
 function first_reaction(system, rng)
 	least=NRTransition(nothing, Inf)
-	all_transitions(system, rng) do id, dist, now, randgen
+	disable=((x...)->nothing)
+	all_transitions(disable, system, rng) do id, dist, now, randgen
 	  trial_time=rand(dist, now, randgen)
 	  # println("SampleSemiMarkov.first_reaction trial_time ",
 	  # 	trial_time, " id ", id, " now ", now)

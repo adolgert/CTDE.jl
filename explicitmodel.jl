@@ -157,7 +157,8 @@ end
 # This does two things.
 # 1. Enable transitions based on the current state.
 # 2. Report them to the callback function.
-function all_transitions(enable::Function, model::ExplicitGSPNModel, rng)
+function all_transitions(enable::Function, disable::Function,
+        model::ExplicitGSPNModel, rng)
   for (node, dict) in model.structure.gspn.node
     if haskey(dict, "transition")
         distribution=nothing
@@ -173,6 +174,7 @@ function all_transitions(enable::Function, model::ExplicitGSPNModel, rng)
             end
         else
             if marked_enabled(model.state, node)
+                disable(node, current_time(model))
                 mark_disabled!(model.state, node)
             end
         end
@@ -186,54 +188,43 @@ function modified_transitions(model::ExplicitGSPNModel, enable::Function,
       disable::Function, rng)
     @debug("ExplicitGSPNModel.modified_transitions enter ",
             model.state.last_fired)
-    if model.state.last_fired!=nothing
-        gspn=model.structure.gspn
-        dependencies=model.structure.dependencies
-        affected_places=Set([x[1] for x in gspn.edge[model.state.last_fired]])
-        examine_transitions=Set()
-        for p in affected_places
-            union!(examine_transitions, Set([t[1] for t in gspn.edge[p]]))
+    if true #model.state.last_fired==nothing
+        all_transitions(enable, disable, model, rng)
+        return
+    end
+
+    gspn=model.structure.gspn
+    dependencies=model.structure.dependencies
+    affected_places=Set([x[1] for x in gspn.edge[model.state.last_fired]])
+    examine_transitions=Set()
+    for p in affected_places
+        # Transitions whose stoichiometry might change
+        union!(examine_transitions, Set([t[1] for t in gspn.edge[p]]))
+        # Transitions whose hazards might change (or drop to zero)
+        union!(examine_transitions, keys(dependencies.edge[p]))
+    end
+
+    @debug("ExplicitGSPNModel.modified_transitions affected ",
+            affected_places, " exam_trans ", examine_transitions)
+    for t in examine_transitions
+        was_enabled=marked_enabled(model.state, t)
+        can_enable=stoichiometry_satisfied(model, t)
+        dist=nothing
+        if can_enable
+            dist=transition_distribution(model, t)
         end
-        @debug("ExplicitGSPNModel.modified_transitions affected ",
-                affected_places, " exam_trans ", examine_transitions)
-        newly_enabled=Set()
-        for t in examine_transitions
-            was_enabled=marked_enabled(model.state, t)
-            now_enabled=stoichiometry_satisfied(model, t)
-            @debug("ExplicitGSPNModel.modified_transitions t ", t,
-                    " was ", was_enabled, " now ", now_enabled)
-            if !was_enabled && now_enabled
-                mark_enabled!(model.state, t, current_time(model))
-                dist=transition_distribution(model, t)
-                if dist!=nothing
-                    enable(t, dist, current_time(model), rng)
-                    push!(newly_enabled, t)
-                end
-            elseif was_enabled && !now_enabled
-                mark_disabled!(model.state, t)
-                disable(t, current_time(model))
-            end
+        now_enabled=(dist!=nothing)
+        @debug("ExplicitGSPNModel.modified_transitions t ", t,
+                " was ", was_enabled, " now ", now_enabled)
+        if !was_enabled && now_enabled
+            mark_enabled!(model.state, t, current_time(model))
+            enable(t, dist, current_time(model), rng)
+        elseif was_enabled && now_enabled
+            enable(t, dist, current_time(model), rng)
+        elseif was_enabled && !now_enabled
+            mark_disabled!(model.state, t)
+            disable(t, current_time(model))
         end
-        # Those which remain enabled but depend on changed places
-        # also need to have their hazards re-evaluated.
-        examine_distributions=Set()
-        for p in affected_places
-            union!(examine_distributions, keys(dependencies.edge[p]))
-        end
-        for ht in examine_distributions
-            if !(ht in newly_enabled) && (stoichiometry_satisfied(model, ht) &&
-                    marked_enabled(model.state, ht))
-                dist=transition_distribution(model, ht)
-                if dist!=nothing
-                    enable(ht, dist, current_time(model), rng)
-                else
-                    assert(dist!=nothing)
-                end
-                # Policy: Do we reset the enabling time?
-            end
-        end
-    else
-        all_transitions(enable, model, rng)
     end
 end
 
