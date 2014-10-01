@@ -263,7 +263,13 @@ function cdf(dist::NelsonAalenDistribution, when::Float64)
     if entry_idx==0
         entry_idx=length(dist.hazard_sum)+1
     end
-    1-exp(-dist.hazard_sum[entry_idx-1])
+    1-exp(-dist.integrated_hazard[entry_idx-1].hazard_sum)
+end
+
+
+function cdf(dist::NelsonAalenDistribution, bypoint::Int)
+    entry=dist.integrated_hazard[bypoint]
+    (entry.when, 1-exp(-entry.hazard_sum))
 end
 
 

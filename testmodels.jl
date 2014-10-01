@@ -1,4 +1,6 @@
 include("semimarkov.jl")
+using DataFrames
+using Gadfly
 using SemiMarkov
 import SemiMarkov: all_transitions, modified_transitions, current_time, current_time!
 
@@ -86,6 +88,24 @@ function fire(model::AlwaysEnabledModel, id_time::NRTransition)
 end
 
 
+function plot_comparison(nelson, comparison)
+	cumulative=Array(Float64, length(nelson.integrated_hazard))
+	times=Array(Float64, length(nelson.integrated_hazard))
+	fixed=Array(Float64, length(nelson.integrated_hazard))
+	for i in 1:length(cumulative)
+		when, how_much=cdf(nelson, i)
+		times[i]=when
+		cumulative[i]=how_much
+		fixed[i]=cdf(comparison, when, 0.0)
+	end
+	df=DataFrame(NelsonAalen=cumulative, Times=times, Original=fixed)
+	#myplot=plot(df, x="Times", y="Original", Geom.line)
+	 myplot=plot(df, layer(x="Times", y="Original", Geom.line),
+	 	layer(x="Times", y="NelsonAalen", Geom.line))
+	draw(PDF("compare.pdf", 4inch, 3inch), myplot)
+end
+
+
 function always_test(propagator, model, cnt)
 	rng=MersenneTwister(1)
 	empirical=Array(EmpiricalDistribution, model.distribution_cnt)
@@ -105,7 +125,8 @@ function always_test(propagator, model, cnt)
 	nelsonaalen=multiple_measures(empirical)
 end
 
-always_test(FirstReaction(), always_enabled_exponential(), 10000)
+na=always_test(FirstReaction(), always_enabled_exponential(), 10000)
+plot_comparison(na[1], exponential_distribution(1, 0.0))
 always_test(NextReactionHazards(), always_enabled_exponential(), 10000)
 always_test(FirstReaction(), always_enabled_weibull(), 10000)
 always_test(NextReactionHazards(), always_enabled_weibull(), 10000)
