@@ -7,24 +7,6 @@ export ExplicitGSPNModel, ConstExplicitTransition
 export ExplicitGSPN, add_place, add_transition, current_time
 export sir_explicit, fire
 
-function marked_enabled(state::TokenState, transition)
-    if haskey(state.enabling_time, transition)
-        return state.enabling_time[transition]>=0
-    end
-    return false
-end
-
-function mark_enabled!(state::TokenState, transition, when)
-    state.enabling_time[transition]=when
-end
-
-function mark_disabled!(state::TokenState, transition)
-    if haskey(state.enabling_time, transition)
-        pop!(state.enabling_time, transition)
-    else
-        assert(haskey(state.enabling_time, transition))
-    end
-end
 
 abstract ExplicitTransition
 # This is const because it has no internal state

@@ -1,3 +1,8 @@
+# This file tests whether propagators are working by creating
+# very simple models, one which resets with each step and one
+# where the firing of transitions is independent.
+# It also, along the way, shows what a propagator expects
+# of the models.
 include("semimarkov.jl")
 using DataFrames
 using Gadfly
