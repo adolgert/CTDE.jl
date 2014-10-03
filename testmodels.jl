@@ -25,7 +25,7 @@ end
 init(model::AlwaysEnabledModel)=nothing
 
 function distribution(model::AlwaysEnabledModel, which::Int)
-	model.make_distribution(which, model.current_time)
+	model.make_distribution(which, model.enabling_time[which])
 end
 
 function current_time(m::AlwaysEnabledModel)
@@ -63,8 +63,14 @@ end
 function enabled_transitions(enable::Function,
         model::AlwaysEnabledModel)
 	for i in 1:model.distribution_cnt
+<<<<<<< HEAD
 		d=distribution(model, i)
 		enable(i, d, model.current_time)
+=======
+		model.enabling_time[i]=model.current_time
+		d=distribution(model, i)
+		enable(i, d, model.current_time, rng)
+>>>>>>> d57f1d6665f026f9f306e62409c0f10d997a4962
 	end	
 end
 
@@ -159,7 +165,10 @@ type BlinkingLightsModel
 	end
 end
 
+<<<<<<< HEAD
 init(model::BlinkingLightsModel)=nothing
+=======
+>>>>>>> d57f1d6665f026f9f306e62409c0f10d997a4962
 
 function distribution(model::BlinkingLightsModel, which::Int)
 	model.make_distribution(which, model.enabling_time[which])
@@ -181,15 +190,28 @@ function blinking_weibull()
 	BlinkingLightsModel(weibull_distribution)
 end
 
+<<<<<<< HEAD
 function enabled_transitions(enable::Function,
         model::BlinkingLightsModel)
 	for i in 1:model.distribution_cnt
 		d=distribution(model, i)
 		enable(i, d, current_time(model))
+=======
+function all_transitions(enable::Function, disable::Function,
+        model::BlinkingLightsModel, rng::MersenneTwister)
+	if model.last_transition.key!=nothing
+		#disable(model.last_transition.key, model.current_time)
+		model.enabling_time[model.last_transition.key]=current_time(model)
+	end
+	for i in 1:model.distribution_cnt
+		d=distribution(model, i)
+		enable(i, d, model.current_time, rng)
+>>>>>>> d57f1d6665f026f9f306e62409c0f10d997a4962
 	end
 end
 
 
+<<<<<<< HEAD
 function fire(model::BlinkingLightsModel, id_time::NRTransition,
 	    enable::Function, disable::Function, rng::MersenneTwister)
 	model.current_time=id_time.time
@@ -203,6 +225,31 @@ end
 
 function fire(model::BlinkingLightsModel, id_time::NRTransition, rng)
 	fire(model, id_time, (x...)->nothing, (x...)->nothing, rng)
+=======
+function modified_transitions(model::BlinkingLightsModel, enable::Function,
+		disable::Function, rng::MersenneTwister)
+	which_fired=model.last_transition.key
+	if which_fired!=nothing
+		# The one that fired is already disabled.
+		#disable(which_fired, model.current_time)
+		model.enabling_time[which_fired]=current_time(model)
+		d=distribution(model, which_fired)
+		enable(which_fired, d, model.current_time, rng)
+	else
+		# Have to enable everything on the first time through.
+		for i in 1:model.distribution_cnt
+			d=distribution(model, i)
+			enable(i, d, model.current_time, rng)
+		end
+	end
+end
+
+
+function fire(model::BlinkingLightsModel, id_time::NRTransition)
+	model.current_time=id_time.time
+	model.enabling_time[id_time.key]=-1
+	model.last_transition=id_time
+>>>>>>> d57f1d6665f026f9f306e62409c0f10d997a4962
 end
 
 
@@ -231,12 +278,20 @@ function blink_test(propagator, model, cnt)
 	for create_idx=1:model.distribution_cnt
 		empirical[create_idx]=EmpiricalDistribution()
 	end
+<<<<<<< HEAD
 	init(propagator, model, rng)
 	for i in 1:cnt
 	    choice=next(propagator, model, rng)
 	    enabling=model.enabling_time[choice.key]
 	    push!(empirical[choice.key], choice.time-enabling)
 	    fire(propagator, model, choice, rng)
+=======
+	for i in 1:cnt
+	    choice=choose(propagator, model, rng)
+	    enabling=model.enabling_time[choice.key]
+	    push!(empirical[choice.key], choice.time-enabling)
+	    fire(model, choice)
+>>>>>>> d57f1d6665f026f9f306e62409c0f10d997a4962
 	end
 	for bidx in 1:model.distribution_cnt
 		build!(empirical[bidx])
