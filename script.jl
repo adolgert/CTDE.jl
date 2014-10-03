@@ -3,7 +3,7 @@ include("semimarkov.jl")
 using SemiMarkov
 
 include("samplemodels.jl")
-cnt=100
+cnt=20
 seed=32
 beta=2.0
 gamma=1.0
@@ -29,7 +29,8 @@ null_observer(state)=nothing
 
 function print_observer(state)
     m=state.marking
-    #println("(",length(m,"s"),", ",length(m,"i"),", ",length(m,"r"),")")
+    # println("po: (",length(m,"s"),", ",length(m,"i"),", ",length(m,"r"),") ",
+    #     state.last_fired)
 end
 
 type OutputObserver
@@ -66,19 +67,20 @@ function run_until(model, sampling, report, end_time)
     #sampling=SampleSemiMarkov.FirstReaction()
 
     running=true
+    init(sampling, model, rng)
     trans=NRTransition(model.state.last_fired, current_time(model))
     steps=0
     while running && trans.time<end_time
-    	trans=choose(sampling, model, rng)
+    	trans=next(sampling, model, rng)
     	#println(id_time)
     	if trans.time!=Inf
             #println("fire ", id_time)
-    		fire(model, trans)
+    		fire(sampling, model, trans, rng)
             #println("marking ", model.state.marking)
+            report(model.state)
     	else
     		running=false
     	end
-        report(model.state)
         steps+=1
     end
     #println("steps ", steps, " end time ", current_time(model))
@@ -100,7 +102,7 @@ for i in 1:run_cnt
     final_size[i]=length(model.state.marking, "r")
     final_time[i]=current_time(model)
 end
-println("R0 ", R0)
+println("R0 ", R0, " N=",cnt)
 println("average size ", mean(final_size))
 println("average final time ", mean(final_time))
 println("figures from Linda Allen's paper")

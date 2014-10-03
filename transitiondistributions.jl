@@ -7,7 +7,7 @@ export TransitionDistribution, WrappedDistribution, TransitionExponential
 export TransitionWeibull
 export rand, test, hazard_integral, implicit_hazard_integral, cdf
 export parameters, quantile
-export EmpiricalDistribution, push!
+export EmpiricalDistribution, push!, build!
 export NelsonAalenDistribution, multiple_measures
 
 # These are the distributions of stochastic processes in absolute time.
@@ -199,6 +199,10 @@ type EmpiricalDistribution
     samples::Array{Float64,1}
     built::Bool
     EmpiricalDistribution()=new(Array(Float64,0), false)
+end
+
+function cdf(ed::EmpiricalDistribution, which::Int)
+    (ed.samples[which], which/length(ed.samples))
 end
 
 function build!(ed::EmpiricalDistribution)

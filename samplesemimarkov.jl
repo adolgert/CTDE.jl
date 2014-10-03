@@ -2,7 +2,7 @@ using Distributions
 using DataStructures
 
 export FirstReaction, NextReactionHazards
-export choose, NRTransition
+export NRTransition, next, fire, init
 
 ##############################################
 # Classic First Reaction method
@@ -10,17 +10,15 @@ export choose, NRTransition
 type FirstReaction
 end
 
-function choose(fr::FirstReaction, system, rng)
-	first_reaction(system, rng)
+function init(propagator::FirstReaction, model, rng)
+	init(model)
 end
 
-function first_reaction(system, rng)
+function next(fr::FirstReaction, system, rng)
 	least=NRTransition(nothing, Inf)
 	disable=((x...)->nothing)
-	all_transitions(disable, system, rng) do id, dist, now, randgen
-	  trial_time=rand(dist, now, randgen)
-	  # println("SampleSemiMarkov.first_reaction trial_time ",
-	  # 	trial_time, " id ", id, " now ", now)
+	enabled_transitions(system) do id, dist, now
+	  trial_time=rand(dist, now, rng)
 	  @assert(trial_time>=now)
 	  if trial_time<least.time
 	  	least.key=id
@@ -30,6 +28,9 @@ function first_reaction(system, rng)
     least
 end
 
+function fire(fr::FirstReaction, system, choice, rng)
+    fire(system, choice, rng)
+end
 
 ##################################################
 # Next reaction by Hazards
@@ -100,30 +101,15 @@ function print_next_reaction_hazards(propagator::NextReactionHazards)
     end
 end
 
-# Finds the next one and removes it from queue.
-function choose(propagator::NextReactionHazards, system, rng)
-	@debug("SampleSemiMarkov.choose enter ", current_time(system))
-    print_next_reaction_hazards(propagator)
-	modified_transitions(system,
-		(key, dist, now, randgen)->enable(propagator, key, dist, now, randgen),
-		(key, now)->disable(propagator, key, now),
-		rng
-		)
-	now=current_time(system)
-	@debug("SampleSemiMarkov.choose ", now, " after modified ",
-			propagator.firing_queue)
-	key_time=next(propagator, now, rng)
-	@debug("SampleSemiMarkov.choose current")
-	print_next_reaction_hazards(propagator)
-	if key_time.time!=Inf
-		# Not firing transition. Removing it from internal queue.
-		fire(propagator, key_time.key, now, rng)
+function init(propagator::NextReactionHazards, model, rng)
+	init(model)
+	enabled_transitions(model) do key, dist, now
+		enable(propagator, key, dist, now, rng)
 	end
-	key_time
 end
 
 # Finds the next one without removing it from the queue.
-function next(propagator::NextReactionHazards, now, rng)
+function next(propagator::NextReactionHazards, model, rng)
 	const NotFound=NRTransition(nothing, Inf)
 	if !isempty(propagator.firing_queue)
 		least=top(propagator.firing_queue)
@@ -144,6 +130,13 @@ function enable(propagator::NextReactionHazards, key, distribution, now, rng)
 	clock_started=haskey(propagator.transition_state, key)
 	if clock_started
 		record=propagator.transition_state[key]
+		if record.heap_handle>=0
+			time_penalty=hazard_integral(record.distribution,
+				record.last_modification_time, now)
+			record.remaining_exponential_interval-=time_penalty
+		else
+			# The transition was disabled previously.
+		end
 		when_fire=implicit_hazard_integral(distribution,
 			record.remaining_exponential_interval, now)
 		@assert(when_fire>=now)
@@ -193,11 +186,13 @@ function disable(propagator::NextReactionHazards, key, now)
 			time_penalty)
 	record.last_modification_time=now
 	record.distribution=nothing
-	record.heap_handle=-1
+	record.heap_handle=-1 # This is the official sign it was disabled.
 end
 
 # Remove a transition from the queue because it fired.
-function fire(propagator::NextReactionHazards, key, now, rng)
+function fire(propagator::NextReactionHazards, system,
+		choice::NRTransition, rng::MersenneTwister)
+	key, when=(choice.key, choice.time)
 	record=propagator.transition_state[key]
 	update!(propagator.firing_queue, record.heap_handle,
 		NRTransition(key, -1))
@@ -211,5 +206,11 @@ function fire(propagator::NextReactionHazards, key, now, rng)
 	# with the marking. When something is reset, erase it from
 	# the dictionary of values. That's equivalent.
 	pop!(propagator.transition_state, key)
+
+	fire(system, choice,
+		(key, dist, now)->enable(propagator, key, dist, now, rng),
+		(key, now)->disable(propagator, key, now),
+		rng
+		)
 end
 

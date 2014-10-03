@@ -157,10 +157,15 @@ function add_tokens(marking::TokenMarking, place, n::Int)
 end
 
 
+type EnablingRecord
+    time::Float64
+    invariant::Array{Int,1}
+end
+
 # The state of the system.
 type TokenState
     marking # Marking, by place.
-    enabling_time::Dict{Any,Float64} # Enabling time, by transition id.
+    enabling::Dict{Any,EnablingRecord} # Enabling time, by transition id.
     current_time::Float64 # Current system time.
     # The last transition fired is part of the state only during
     # the brief time invariants about consistency are broken, namely
@@ -171,4 +176,23 @@ end
 
 function TokenState(marking)
     TokenState(marking, Dict{Any,Float64}(), 0.0, nothing)
+end
+
+function marked_enabled(state::TokenState, transition)
+    if haskey(state.enabling, transition)
+        return state.enabling[transition].time>=0
+    end
+    return false
+end
+
+function mark_enabled!(state::TokenState, transition, when)
+    state.enabling_time[transition]=when
+end
+
+function mark_disabled!(state::TokenState, transition)
+    if haskey(state.enabling, transition)
+        pop!(state.enabling, transition)
+    else
+        assert(haskey(state.enabling_time, transition))
+    end
 end
