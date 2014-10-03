@@ -125,7 +125,10 @@ function stoichiometry_satisfied(model::ExplicitGSPNModel, transition_id)
     return true
 end
 
-function transition_distribution(model::ExplicitGSPNModel, transition_id)
+# The correct enabling time to send is the current time if we are asking whether
+# this transition is newly-enabled. If we are just getting the distribution of
+# an enabled transition, then send its already-known enabling time.
+function transition_distribution(model::ExplicitGSPNModel, transition_id, enabling)
     local_marking=Dict{Any,Any}()
     dependencies=model.structure.dependencies
     for (place, edge_properties) in dependencies.edge[transition_id]
@@ -134,7 +137,7 @@ function transition_distribution(model::ExplicitGSPNModel, transition_id)
         local_marking[edge_properties["local"]]=mp
     end
     transition=model.structure.gspn.node[transition_id]["transition"]
-    dist, invariant=distribution(transition, local_marking, current_time(model))
+    dist, invariant=distribution(transition, local_marking, enabling)
 end
 
 function examine_transition(model::ExplicitGSPNModel, transition_id,
@@ -150,7 +153,7 @@ function examine_transition(model::ExplicitGSPNModel, transition_id,
         return
     end
 
-    dist, invariant=transition_distribution(model, transition_id)
+    dist, invariant=transition_distribution(model, transition_id, current_time(model))
     nonzero_hazard=(dist!=nothing)
     was_enabled=haskey(model.state.enabling, transition_id)
     if was_enabled
@@ -193,7 +196,9 @@ end
 
 function enabled_transitions(report::Function, model::ExplicitGSPNModel)
     for (id, enabling) in model.state.enabling
-        distribution, invariant=transition_distribution(model, id)
+        # This isn't asking who becomes enabled but who is already enabled.
+        # So use the already-given enabling time.
+        distribution, invariant=transition_distribution(model, id, enabling.time)
         @assert(distribution!=nothing)
         report(id, distribution, current_time(model))
     end
