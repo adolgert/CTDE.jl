@@ -32,6 +32,92 @@ function kernel_model_exp()
     model
 end
 
+
+function kernel_model_weib()
+    state=TokenState(int_marking())
+    model=ExplicitGSPNModel(state)
+    structure=model.structure
+    add_place(structure, "a")
+
+    transition1=ConstExplicitTransition(
+        (lm, when)->begin
+            (TransitionWeibull(1.0, 1.7, when), Int[])
+        end)
+    transition2=ConstExplicitTransition(
+        (lm, when)->begin
+            (TransitionWeibull(0.8, 0.4, when), Int[])
+        end)
+    add_transition(structure, 1, transition1,
+        [("a",-1),("a",1)],
+        [])
+    add_transition(structure, 2, transition2,
+        [("a", -1), ("a", 1)],
+        [])
+
+    add_tokens(model.state.marking, "a", 1)
+
+    model
+end
+
+
+function independent_model_exp()
+    state=TokenState(int_marking())
+    model=ExplicitGSPNModel(state)
+    structure=model.structure
+    add_place(structure, "a")
+    add_place(structure, "b")
+
+    transition1=ConstExplicitTransition(
+        (lm, when)->begin
+            (TransitionExponential(2.0, when), Int[])
+        end)
+    transition2=ConstExplicitTransition(
+        (lm, when)->begin
+            (TransitionExponential(0.3, when), Int[])
+        end)
+    add_transition(structure, 1, transition1,
+        [("a",-1),("a",1)],
+        [])
+    add_transition(structure, 2, transition2,
+        [("b", -1), ("b", 1)],
+        [])
+
+    add_tokens(model.state.marking, "a", 1)
+    add_tokens(model.state.marking, "b", 1)
+
+    model
+end
+
+
+function independent_model_weib()
+    state=TokenState(int_marking())
+    model=ExplicitGSPNModel(state)
+    structure=model.structure
+    add_place(structure, "a")
+    add_place(structure, "b")
+
+    transition1=ConstExplicitTransition(
+        (lm, when)->begin
+            (TransitionWeibull(1.0, 1.7, when), Int[])
+        end)
+    transition2=ConstExplicitTransition(
+        (lm, when)->begin
+            (TransitionWeibull(0.8, 0.4, when), Int[])
+        end)
+    add_transition(structure, 1, transition1,
+        [("a",-1),("a",1)],
+        [])
+    add_transition(structure, 2, transition2,
+        [("b", -1), ("b", 1)],
+        [])
+
+    add_tokens(model.state.marking, "a", 1)
+    add_tokens(model.state.marking, "b", 1)
+
+    model
+end
+
+
 type EmpiricalObserver
 	empirical::Array{EmpiricalDistribution,1}
 	previous_time::Float64
@@ -46,6 +132,7 @@ end
 
 function show(eo::EmpiricalObserver)
 	total=sum([length(x) for x in eo.empirical])
+    println("dist    percent")
 	for i in 1:length(eo.empirical)
 		println(i, " ", length(eo.empirical[i]), " ", length(eo.empirical[i])/total)
 	end
@@ -81,13 +168,44 @@ function run_steps(model, sampling, report, end_step)
     #println("steps ", steps, " end time ", current_time(model))
 end
 
+function try_one(model, sampling)
+    #sampling=NextReactionHazards()
+    empirical=EmpiricalObserver(2)
+    step_cnt=100000
+    run_steps(model, sampling, x->observe(empirical, x), step_cnt)
+    show(empirical)
+end
+
 seed=20
 rng=MersenneTwister(seed)
 model=kernel_model_exp()
 sampling=FirstReaction()
-#sampling=NextReactionHazards()
-empirical=EmpiricalObserver(2)
-step_cnt=100000
-run_steps(model, sampling, x->observe(empirical, x), step_cnt)
-show(empirical)
+try_one(model, sampling)
 
+model=kernel_model_exp()
+sampling=NextReactionHazards()
+try_one(model, sampling)
+
+model=kernel_model_weib()
+sampling=FirstReaction()
+try_one(model, sampling)
+
+model=kernel_model_weib()
+sampling=NextReactionHazards()
+try_one(model, sampling)
+
+model=independent_model_exp()
+sampling=FirstReaction()
+try_one(model, sampling)
+
+model=independent_model_exp()
+sampling=NextReactionHazards()
+try_one(model, sampling)
+
+model=independent_model_weib()
+sampling=FirstReaction()
+try_one(model, sampling)
+
+model=independent_model_weib()
+sampling=NextReactionHazards()
+try_one(model, sampling)

@@ -46,12 +46,12 @@ function sir_network(contact)
     infect_transition=ConstExplicitTransition(
         (lm, when)->begin
             hazard=0.5
-            TransitionExponential(hazard, when)
+            (TransitionExponential(hazard, when), Int[])
         end)
     recover_transition=ConstExplicitTransition(
         (lm, when)->begin
             hazard=0.4
-            TransitionExponential(hazard, when)
+            (TransitionExponential(hazard, when), Int[])
         end)
     for who in keys(contact.node)
         for neighbor in keys(contact.edge[who])
@@ -94,19 +94,19 @@ function sirs_birth_death(cnt, params)
         (m, t)->begin
             (s, i, r)=map(c->length(m[c]), ["s", "i", "r"])
             λ=s*i*β0*(1+β1*cos(2π*(t-θ)))/(s+i+r)
-            TransitionExponential(λ, t)
+            (TransitionExponential(λ, t), Int[s, i, r])
         end)
     recover_transition=ConstExplicitTransition(
         (m, t)->begin
-            TransitionExponential(γ*length(m["i"]), t)
+            (TransitionExponential(γ*length(m["i"]), t), Int[length(m["i"]),])
         end)
     birth_transition=ConstExplicitTransition(
         (m, t)->begin
-            TransitionExponential(α, t)
+            (TransitionExponential(α, t), Int[])
         end)
     death_transition=ConstExplicitTransition(
         (m, t)->begin
-            TransitionExponential(μ*length(m["d"]), t)
+            (TransitionExponential(μ*length(m["d"]), t), Int[length(m("d")),])
         end)
 
     add_transition(structure, "infect", infect_transition,
