@@ -6,6 +6,7 @@
 include("semimarkov.jl")
 using DataFrames
 using Gadfly
+using Distributions
 using SemiMarkov
 import SemiMarkov: enabled_transitions, current_time, current_time!
 import SemiMarkov: fire, init
@@ -53,6 +54,14 @@ function weibull_distribution(which::Int, when::Float64)
 		return TransitionWeibull(1.0, 1.7, when)
 	elseif which==2
 		return TransitionWeibull(0.8, 0.4, when)
+	end
+end
+
+function fake_weibull_distribution(which::Int, when::Float64)
+	if which==1
+		return WrappedDistribution(Distributions.Weibull(1.7, 1.0), when)
+	elseif which==2
+		return WrappedDistribution(Distributions.Weibull(0.4, 0.8), when)
 	end
 end
 
@@ -181,6 +190,10 @@ function blinking_weibull()
 	BlinkingLightsModel(weibull_distribution)
 end
 
+function fake_blinking_weibull()
+	BlinkingLightsModel(fake_weibull_distribution)
+end
+
 function enabled_transitions(enable::Function,
         model::BlinkingLightsModel)
 	for i in 1:model.distribution_cnt
@@ -258,11 +271,21 @@ function test_blinking()
 	plot_comparison(na[1], exponential_distribution(1, 0.0), "bnexp1")
 	plot_comparison(na[2], exponential_distribution(2, 0.0), "bnexp2")
 	na=blink_test(FirstReaction(), blinking_weibull(), 10000)
+
 	plot_comparison(na[1], weibull_distribution(1, 0.0), "bfweib1")
 	plot_comparison(na[2], weibull_distribution(2, 0.0), "bfweib2")
 	na=blink_test(NextReactionHazards(), blinking_weibull(), 10000)
 	plot_comparison(na[1], weibull_distribution(1, 0.0), "bnweib1")
 	plot_comparison(na[2], weibull_distribution(2, 0.0), "bnweib2")
+
+	println("fake weibull, first reaction")
+	na=blink_test(FirstReaction(), fake_blinking_weibull(), 10000)
+	plot_comparison(na[1], weibull_distribution(1, 0.0), "bwfweib1")
+	plot_comparison(na[2], weibull_distribution(2, 0.0), "bwfweib2")
+	println("fake weibull, next reaction")
+	na=blink_test(NextReactionHazards(), fake_blinking_weibull(), 10000)
+	plot_comparison(na[1], weibull_distribution(1, 0.0), "bwnweib1")
+	plot_comparison(na[2], weibull_distribution(2, 0.0), "bwnweib2")
 end
 
 

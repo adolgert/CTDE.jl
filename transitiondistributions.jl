@@ -1,6 +1,6 @@
 
 using Distributions
-import Distributions: quantile, rand, cdf
+import Distributions: quantile, rand, cdf, logccdf, invlogccdf
 import Base: rand, push!, isless
 
 export TransitionDistribution, WrappedDistribution, TransitionExponential
@@ -34,32 +34,37 @@ end
 # Given a distribution F
 # P(x<=t | x>t0)=P(x<=t && x>t0) / P(x>t0)
 # U is a uniform variable between 0<U<=1
-function quantile(distribution::WrappedDistribution, now::Float64,
+function quantile(distribution::WrappedDistribution, t0::Float64,
         U::Float64)
-    time_delta=now-distribution.enabling_time
-    now+quantile(distribution.relative_distribution,
-        1-(1-U)*ccdf(distribution.relative_distribution, time_delta))-time_delta
+    te=distribution.enabling_time
+    te+quantile(distribution.relative_distribution,
+        U+(1-U)*cdf(distribution.relative_distribution, t0-te))
 end
 
 # The current time of the system is "now".
 # The cdf is being evaluated for a future time, "when".
 function cdf(dist::WrappedDistribution, when::Float64, now::Float64)
-    1 - ((1-cdf(dist.relative_distribution, when-dist.enabling_time))/
-            (1-cdf(dist.relative_distribution, now-dist.enabling_time)))
+    t0te=cdf(dist.relative_distribution, now-dist.enabling_time)
+    tte=cdf(dist.relative_distribution, when-dist.enabling_time)
+    (tte-t0te)/(1-t0te)
 end
 
 # Given a hazard, the integral of that hazard over a time.
 # int_{t0}^{t1} hazard(s, te) ds
-function hazard_integral(dist::WrappedDistribution, last, now)
+function hazard_integral(dist::WrappedDistribution, t1, t2)
     # logccdf is log(1-cdf(d, x))
     rel=dist.relative_distribution
-    logccdf(rel, last-dist.enabling_time)-logccdf(rel, now-dist.enabling_time)
+    te=dist.enabling_time
+    logccdf(rel, t1-te)-logccdf(rel, t2-te)
 end
 
 # xa = int_{t0}^{t} hazard(s, te) ds. Solve for t.
-function implicit_hazard_integral(dist::WrappedDistribution, xa, t1)
+function implicit_hazard_integral(dist::WrappedDistribution, xa, t0)
     rel=dist.relative_distribution
-    -invlogccdf(rel, xa-logccdf(t1-dist.enabling_time))
+    te=dist.enabling_time
+    t=te+invlogccdf(rel, -xa+logccdf(rel, t0-te))
+    @assert(t>=t0)
+    t
 end
 
 
@@ -193,6 +198,65 @@ function test(dist::TransitionWeibull)
         " diff ", abs(k-k_est))
 end
 
+#################################
+# α - shape parameter
+# β - inverse scale parameter, also called rate parameter
+#
+# pdf=(β^α/Γ(α))x^(α-1) e^(-βx)
+function TransitionGamma(α::Float64, β::Float64, te::Float64)
+    # The supplied version uses θ=1/β.
+    relative=Distributions.GammaDistribution(α, 1/β)
+    WrappedDistribution(relative, te)
+end
+
+##################################
+# F(t)=1/(1 + ((t-te)/α)^(-β))
+type TransitionLogLogistic
+    alpha::Float64
+    beta::Float64
+    te::Float64
+end
+
+parameters(d::TransitionLogLogistic)=Float64[d.apha, d.beta, d.te]
+
+function rand(d::TransitionLogLogistic, now, rng::MersenneTwister)
+    quantile(d, now, rand(rng))
+end
+
+function quantile(d::TransitionLogLogistic, U::Float64)
+    d.te+d.alpha*(U/(1-U))^(1/d.beta)
+end
+
+function quantile(d::TransitionLogLogistic, t0::Float64, U::Float64)
+    d.te+quantile(d, U+(1-U)*cdf(d, t0-d.te))
+end
+
+# Survival
+function ccdf(d::TransitionLogLogistic, t)
+    1/((1+(t-d.te)/d.alpha)^d.beta)
+end
+
+function logccdf(d::TransitionLogLogistic, t)
+    -log( 1 + ((t-d.te)/d.alpha)^d.beta )
+end
+
+function hazard_integral(d::TransitionLogLogistic, t1, t2)
+    logccdf(d, t1)-logccdf(d, t2)
+end
+
+function cdf(d::TransitionLogLogistic, t)
+    1/(1+((t-d.te)/d.alpha)^(-d.beta))
+end
+
+function cdf(d::TransitionLogLogistic, t, t0)
+    tte=cdf(d, t)
+    t0te=cdf(d, t0)
+    (tte-t0te)/(1-t0te)
+end
+
+function implicit_hazard_integral(dist::TransitionLogLogistic, xa, t0)
+    d.te+invlog
+end
 
 #################################
 type EmpiricalDistribution

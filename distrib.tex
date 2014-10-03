@@ -1,0 +1,167 @@
+\documentclass{article}
+\usepackage{listings}
+
+\title{Working Distributions}
+\author{Drew Dolgert}
+\date{\today}
+
+\newcommand{\code}[1]{\texttt{#1}}
+
+\begin{document}
+\maketitle
+
+\section{Shifted Absolute Distributions}
+Our mission is to express probability distributions
+with respect to some enabling time $t_e$ and then, after
+some later time $t_0$, to perform three operations, sampling,
+integration of the hazard, and the inverse of integration of
+the hazard.
+
+Given a cumulative distribution,we normally write
+\begin{equation}
+  F(t)=1-e^{-\int_{0}^t \lambda(s)ds}\label{eqn:simplecdf}
+\end{equation}
+or
+\begin{equation}
+  F(t)=\int_0^t f(s)ds,
+\end{equation}
+but for distributions in absolute time, meaning they are shifted
+by $t_e$, it is
+\begin{equation}
+  F(t,t_e)=1-e^{-\int_{0}^{t-t_e} \lambda(s)ds}
+\end{equation}
+or
+\begin{equation}
+  F(t,t_e)=\int_{0}^{t-t_e} f(s)ds.
+\end{equation}
+The call for $F(t)$ is \code{cdf(t)}, and $F(t,t_e)$ is \code{cdf($t-t_e$)}.
+
+Now let's sample the distribution after some time $t_0>=t_e$, at which time
+we normalize the distribution to its remaining probability. We can
+think of this best with survivals, $G(t)=1-F(t)$. In words, the probability of
+survival from $t_e$ to time $t$ ($G(t,t_e)$) is the probability
+of survival from $t_e$ to $t_0$ ($G(t_0,t_e$)
+\emph{and} the probability of survival from $t_0$ to $t$ ($G(t,_0,t_e)$).
+\begin{equation}
+  G(t,t_e)=G(t_0,t_e)G(t,t_0,t_e)
+\end{equation}
+Written in terms of hazards, this is
+\begin{equation}
+  e^{-\int_{0}^{t-t_e} \lambda(s)ds}=e^{-\int_{0}^{t_0-t_e} \lambda(s)ds}
+    e^{-\int_{t_0-t_e}^{t-t_e} \lambda(s)ds},
+\end{equation}
+where the hazard is the same zero-based hazard from Eq.~\ref{eqn:simplecdf}.
+Therefore, given the initial survival, expressed since the enabling time $t_e$,
+the scaled survival is
+\begin{equation}
+  G(t,t_0,t_e)=G(t,t_e)/G(t_0,t_e).
+\end{equation}
+In terms of cumulative distribution functions,
+\begin{eqnarray}
+  F(t,t_0,t_e)&=&1-\frac{1-F(t,t_e)}{1-F(t_0,t_e)} \\
+          &=&\frac{F(t,t_e)-F(t_0,t_e)}{1-F(t_0,t_e)}\label{eqn:shiftcum} \\
+\end{eqnarray}
+In terms of the function calls, that means
+\begin{lstlisting}
+  cdf(t, t0, te)=(cdf(t-te)-cdf(t0-te))/(1-cdf(t0,te))
+\end{lstlisting}
+
+\begin{table}
+\begin{tabular}{ll} \hline
+\code{cdf(d,t)} & $F_d(t)$ \\
+\code{quantile(d,q)} & $F_d^{-1}(q)$ \\
+\code{logcdf(d,t)} & $\ln(F_d(t))$ \\
+\code{ccdf(d,t)} & $G_d(t)$ \\
+\code{logccdf(d,t)} & $-\int_0^t \lambda_d(s)ds$ \\
+\code{quantile(d,q)} & $F_d^{-1}(q)$ \\
+\code{cquantile(d,q)} & $F_d^{-1}(1-q)=G_d^{-1}(q)$ \\
+\code{invlogcdf(d,lp)} & $F_d^{-1}(e^{l_p})$ \\
+\code{invlogccdf(d,lp)} & $G_d^{-1}(e^{l_p})$ or $-\int_0^{t(l_p)}\lambda(s)ds=l_p$ \\\hline
+\end{tabular}
+\caption{Translation of methods into math.\label{fig:methodmath}}
+\end{table}
+
+In practice, sampling algorithms are specific to particular distributions.
+They are formally equivalent to drawing a uniform random variable between
+0 and 1, which we call $U$, and solving $U=F(t')$ for $t'$.
+For the case of interest, where the distribution has an enabling time, $t_e$,
+and is being observed after survival to a time $t_0$, sampling is formally
+a solution $t'$ to $U=F(t', t_0, t_e)$. Looking back at Eq.~\ref{eqn:shiftcum},
+we can write this as
+\begin{eqnarray}
+ U&=&F(t,t_0,t_e) \\
+  &=&\frac{F(t,t_e)-F(t_0,t_e)}{1-F(t_0,t_e)} \\
+U(1-F(t_0,t_e))&=&F(t,t_e)-F(t_0,t_e) \\
+F(t,t_e)&=&U(1-F(t_0,t_e))+F(t_0,t_e) \\
+F(t-t_e)&=&U(1-F(t_0-t_e))+F(t_0-t_e) \\
+t-t_e &=& F^{-1}\left[U(1-F(t_0-t_e))+F(t_0-t_e)\right] \\
+t &=& t_e+F^{-1}\left[U(1-F(t_0-t_e))+F(t_0-t_e)\right]
+\end{eqnarray}
+Using the inverse \textsc{CDF} from Table~\ref{fig:methodmath},
+the inverse of this shifted quantile is
+\begin{lstlisting}
+  quantile(U, t0, te)=te+quantile(U+(1-U)*cdf(t0-te))
+\end{lstlisting}
+This would be a way to sample any distribution with a \textsc{CDF} and
+quantile, but likely badly.
+
+The next two pieces concern the hazard. The goal is to find the integral
+of the hazard between two absolute times, $t_1$ and $t_2$, where both
+are $t_{1,2}\ge t_0$. This is
+\begin{equation}
+  \int_{t_1-t_e}^{t_2-t_e} \lambda(s)ds=\int_{0}^{t_2-t_e} \lambda(s)ds
+  	-\int_{0}^{t_1-t_e} \lambda(s)ds.
+\end{equation}
+In terms of the given methods, this would be, noting the minus sign
+in the table,
+\begin{lstlisting}
+  hazard_int(t1, t2, te)=logccdf(t1-te)-logccdf(t2-te)
+\end{lstlisting}
+
+Last is the inverse hazard. We want to solve for $t'$ in
+\begin{equation}
+  x=\int_{t_0-t_e}^{t'-t_e}\lambda(s)ds.
+\end{equation}
+Expanding as before, this is
+\begin{eqnarray}
+  x&=&\int_{0}^{t'-t_e}\lambda(s)ds-\int_{0}^{t_0-t_e}\lambda(s)ds \\
+  x+\int_{0}^{t_0-t_e}\lambda(s)ds&=&\int_{0}^{t'-t_e}\lambda(s)ds \\
+  -x-\int_{0}^{t_0-t_e}\lambda(s)ds&=& -\int_{0}^{t'-t_e}\lambda(s)ds \\
+  l_p&=&-x+\left[-\int_{0}^{t_0-t_e}\lambda(s)ds\right] \\
+  l_p&=&-\int_{0}^{t'-t_e}\lambda(s)ds
+\end{eqnarray}
+Translating this into equations, we get
+\begin{lstlisting}
+  lp=-x+logccdf(t0-te)
+  inv_hazard_int(x, t0, te)=te+invlogccdf(lp)
+\end{lstlisting}
+
+\section{Log-Logistic}
+Working from wikipedia, because that's smart.
+\begin{equation}
+  F(x;\alpha, \beta)=\frac{1}{1+(x/\alpha)^{-\beta}}.
+\end{equation}
+We shift this to
+\begin{equation}
+  F(t, t_e)=\frac{1}{1+((t-t_e)/\alpha)^{-\beta}}.
+\end{equation}
+The pdf is
+\begin{equation}
+  f(x;\alpha, \beta)=\frac{(\beta/\alpha)(x/\alpha)^{\beta-1}}
+  {(1+(x/\alpha)^\beta)^2}.
+\end{equation}
+The quantile is
+\begin{equation}
+  F^{-1}(p; \alpha, \beta)=\alpha \left(\frac{p}{1-p}\right)^{1/\beta}.
+\end{equation}
+Survival
+\begin{equation}
+  G(t)=1-F(t)=\frac{1}{1+(t/\alpha)^\beta}.
+\end{equation}
+Hazard
+\begin{equation}
+  \lambda(t)=\frac{f(t)}{G(t)}=\frac{(\beta/\alpha)(t/\alpha)^{\beta-1}}
+  {1+(t/\alpha)^\beta}
+\end{equation}
+
+\end{document}
