@@ -160,7 +160,7 @@ function examine_transition(model::ExplicitGSPNModel, transition_id,
         enabling_record=model.state.enabling[transition_id]
         if nonzero_hazard
             # If there's no invariant, then it's enabled whenever it's on.
-            if (length(invariant)==0) || (enabling_record.invariant!=invariant)
+            if enabling_record.invariant!=invariant
                 enabling_record.time=current_time(model)
                 enabling_record.invariant=invariant
                 enable(transition_id, dist, current_time(model))

@@ -74,7 +74,7 @@ function enabled_transitions(enable::Function,
 	for i in 1:model.distribution_cnt
 		d=distribution(model, i)
 		enable(i, d, model.current_time)
-	end	
+	end
 end
 
 function fire(model::AlwaysEnabledModel, id_time::NRTransition,

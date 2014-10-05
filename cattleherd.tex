@@ -1,0 +1,62 @@
+\documentclass{article}
+\usepackage[top=1in,bottom=1in,left=1in,right=1in]{geometry}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{color}
+\usepackage[pdftex]{graphicx}
+\usepackage{xspace}
+
+
+\title{Models of FMDV in a Herd of Cattle}
+\author{Drew Dolgert}
+\date{\today}
+
+\begin{document}
+\maketitle
+\abstract{There is significant data on the progress of FMDV within individual
+cattle. This data describes both the progress of the disease and its variability
+among individuals according to various effects. Obtaining multiple samples of
+similar data for herds of infected cattle is impractical or inhumane, so
+models extend understanding at an individual level to a herd level. This article
+examines a family of models for FMDV progress within a herd in order to
+understand how both the average progress of disease and an estimate of its
+variability.}
+
+\section{Introduction}
+Focus on a putative herd of beef cattle of the same breed and similar life stage.
+Build several models of varying complexity.
+
+
+\section{FMDV progress within an individual}
+\begin{figure}
+\centerline{\begin{tabular}{lll}
+\hline
+FMD stage & time interval [days] & Poisson & Distribution \\ \hline
+Latent &  $t_1-t_0$ 3.59 & Weibull ($\alpha=1.782$, $\beta=3.974$) \\
+Subclinical & $t_2-t_1$ & 2.04 & Gamma ($\alpha=1.222$, $\beta=1.672$) \\
+Incubation & $t_2-t_0$  & 5.9 & Log logistic ($\gamma=0$, $\beta=5.3$, $\alpha=4.02$) \\
+Infectious &  $t_3-t_1$ & 4.39 & Gamma ($\alpha=3.969$, $\beta=1.107$)
+\end{tabular}}
+\caption{From ``FMDV serotype O infection in domestic animals,''\label{fig:compartments}}
+\end{figure}
+
+Mardones et al.\ define five observations for the progress of FMDV within
+an individual, exposure at $t_0$, first reported positive sample
+at $t_1$, first clinical sign at $t_2$, last reported positive sample at $t_3$,
+and last clinical sign at $t_4$. These observations are the boundaries
+of compartments for compartmental models, as described in Fig.~\ref{fig:compartments}.
+
+
+This work will represent the state of an individual with two
+states, the disease state and the clinical sign.
+The disease states are latent, infectious, and recovered.
+The clinical signs are not clinical or clinical. Together, these states
+represent all of the compartments. An individual can become clinical
+only once infectious. As an approximation given the paper's data, the individual
+will become subclinical again once recovered.
+
+\section{Herd Models}
+
+
+
+\end{document}
