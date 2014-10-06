@@ -4,7 +4,7 @@ import Distributions: quantile, rand, cdf, logccdf, invlogccdf
 import Base: rand, push!, isless
 
 export TransitionDistribution, WrappedDistribution, TransitionExponential
-export TransitionWeibull
+export TransitionWeibull, TransitionGamma
 export rand, test, hazard_integral, implicit_hazard_integral, cdf
 export parameters, quantile
 export EmpiricalDistribution, push!, build!
@@ -205,7 +205,7 @@ end
 # pdf=(β^α/Γ(α))x^(α-1) e^(-βx)
 function TransitionGamma(α::Float64, β::Float64, te::Float64)
     # The supplied version uses θ=1/β.
-    relative=Distributions.GammaDistribution(α, 1/β)
+    relative=Distributions.Gamma(α, 1/β)
     WrappedDistribution(relative, te)
 end
 
