@@ -7,22 +7,6 @@ import SemiMarkov: enabled_transitions, current_time, current_time!
 import SemiMarkov: fire, init
 
 
-disease_exponential={
-	'l'=>3.59, # latent to infectious
-	's'=>2.04, # not clinical to clinical
-	'i'=>4.39, # infectious to recovered
-	'e'=>10, # clinical back to subclinical (unknown and less important)
-    'g'=>0.5 # rate of infection of neighbor
-}
-
-disease_nonexponential={
-    'l'=>(1.782, 3.974),
-    's'=>(1.222, 1.672),
-    'i'=>(3.969, 1.107),
-    'e'=>1/10,
-    'g'=>1/0.5
-}
-
 function individual_exponential(params)
     state=TokenState(int_marking())
     model=ExplicitGSPNModel(state)
@@ -165,27 +149,19 @@ function observe(eo::IndividualDiseaseObserver, state)
 end
 
 
-function plot_density(v, name)
-	plot_cnt=100
-	cumulative=zeros(Float64, plot_cnt)
-	times=zeros(Float64, plot_cnt)
-	bandwidth=0.2
-	lambda=1/bandwidth
-	vmax=maximum(v)
-	println("density ", length(v), " ", minimum(v), " ", maximum(v), " ", mean(v))
-	for i in 1:plot_cnt
-		dx=(i-1)*1.1*vmax/plot_cnt
-		s=lambda*SmoothingKernels.kernels[:epanechnikov](lambda*(v-dx))
-		cumulative[i]=sum(s)
-		times[i]=dx
-	end
-	df=DataFrame(PDF=cumulative, Times=times)
+function plot_density(df, title, names)
 	#myplot=plot(df, x="Times", y="Original", Geom.line)
-	myplot=plot(df, x="Times", y="PDF", Geom.line,
+	myplot=plot(df, layer(x="Times", y="Infect", Geom.line,
+			Theme(default_color=color("blue"))),
+		layer(x="Times", y="Clinical", Geom.line,
+			Theme(default_color=color("green"))),
+		layer(x="Times", y="Removed", Geom.line,
+			Theme(default_color=color("orange"))),
         Guide.xlabel("time interval since infection [days]"),
         Guide.ylabel("probability distribution of firing"),
-        Guide.title(name))
-	draw(SVG("$(name).svg", 20cm, 15cm), myplot)
+        Guide.title(title))
+    filename=join(matchall(r"[A-Za-z]", title))
+	draw(PDF("$(filename).pdf", 20cm, 15cm), myplot)
 end
 
 function plot_one_observer(d, name)
@@ -193,11 +169,31 @@ function plot_one_observer(d, name)
     plot_density(d, name)
 end
 
-function plot_observer(eo::IndividualDiseaseObserver)
-	plot_one_observer(eo.t[:,1], "time to infectious")
-    plot_one_observer(eo.t[:,2], "time to clinical")
-    plot_one_observer(eo.t[:,3], "time to recovered")
-    plot_one_observer(eo.t[:,4], "time to subclinical")
+function smoothed(plot_cnt, data::Array{Float64,2}, names)
+	col_cnt=length(names)
+	row_cnt=size(data)[1]
+	cumulative=zeros(Float64, plot_cnt, col_cnt)
+	times=zeros(Float64, plot_cnt)
+	bandwidth=0.2
+	lambda=1/bandwidth
+	vmax=maximum(data)
+	kernel=SmoothingKernels.kernels[:epanechnikov]
+	for i in 1:plot_cnt
+		dx=(i-1)*1.1*vmax/plot_cnt
+		for col_idx in 1:col_cnt
+			cumulative[i, col_idx]=sum(lambda*kernel(lambda*(data[:,col_idx]-dx)))
+		end
+		times[i]=dx
+	end
+	cumulative/=row_cnt
+	DataFrame(Times=times, Infect=cumulative[:,1], Clinical=cumulative[:,2],
+		Removed=cumulative[:,3])
+end
+
+function plot_observer(eo::IndividualDiseaseObserver, title)
+	names=["time to infectious", "time to clinical", "time to recovered"]
+	df=smoothed(100, eo.t[:,1:3], names)
+	plot_density(df, title, names)
 end
 
 function run_steps(model, sampling, report, rng)
@@ -370,14 +366,31 @@ end
 
 rng=MersenneTwister(seed)
 
-function individual_graph_set(model)
+function individual_graph_set(model, title)
     sampling=FirstReaction()
     observer=IndividualDiseaseObserver()
 
     run_steps(model, sampling, s->observe(observer, s), rng)
     println("Ran model")
-    plot_observer(observer)
+    plot_observer(observer, title)
 end
+
+
+disease_exponential={
+	'l'=>3.59, # latent to infectious
+	's'=>2.04, # not clinical to clinical
+	'i'=>4.39, # infectious to recovered
+	'e'=>10, # clinical back to subclinical (unknown and less important)
+    'g'=>0.5 # rate of infection of neighbor
+}
+
+disease_nonexponential={
+    'l'=>(1.782, 3.974),
+    's'=>(1.222, 1.672),
+    'i'=>(3.969, 1.107),
+    'e'=>1/10,
+    'g'=>1/0.5
+}
 
 # Convert scale in days to a hazard per day.
 de_params=Dict{Char,Float64}()
@@ -389,7 +402,7 @@ function run_individual_model()
     #model=individual_exponential(de_params)
     #individual_graph_set(exp_model)
     nonexp_model=individual_nonexponential(disease_nonexponential)
-    individual_graph_set(nonexp_model)
+    individual_graph_set(nonexp_model, "Simulation from Nonexponential Fits to Data")
 end
 
 function herd_model(params, rng)
