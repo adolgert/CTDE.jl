@@ -101,6 +101,11 @@ function ExplicitGSPNModel(state)
     ExplicitGSPNModel(ExplicitGSPN(), state)
 end
 
+
+function ExplicitGSPNModel()
+    ExplicitGSPNModel(ExplicitGSPN(), nothing)
+end
+
 function current_time(model::ExplicitGSPNModel)
     model.state.current_time
 end

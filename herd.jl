@@ -7,7 +7,7 @@ import SemiMarkov: enabled_transitions, current_time, current_time!
 import SemiMarkov: fire, init
 
 
-function individual_exponential(params)
+function individual_exponential(params, transition_distributions)
     state=TokenState(int_marking())
     model=ExplicitGSPNModel(state)
     structure=model.structure
@@ -20,7 +20,7 @@ function individual_exponential(params)
     # The basic SIR
     infectious=ConstExplicitTransition(
         (lm, when)->begin
-            (TransitionExponential(params['l'], when), Int[])
+            (transition_distributions["infectious"](lm, when, params), Int[])
         end)
     recover=ConstExplicitTransition(
         (lm, when)->begin
@@ -121,7 +121,7 @@ type IndividualDiseaseObserver
 	latent::Float64 # When latent was started.
 	previous_time::Float64
 	idx
-	IndividualDiseaseObserver()=new(zeros(Float64, 10_000, 4), 0., 0., 1)
+	IndividualDiseaseObserver(run_cnt)=new(zeros(Float64, run_cnt, 4), 0., 0., 1)
 end
 
 function observe(eo::IndividualDiseaseObserver, state)
@@ -348,6 +348,7 @@ function show(eo::HerdDiseaseObserver)
 end
 
 cnt=20
+run_cnt=100_000
 seed=32
 beta=2.0
 gamma=1.0
@@ -366,9 +367,9 @@ end
 
 rng=MersenneTwister(seed)
 
-function individual_graph_set(model, title)
+function individual_graph_set(model, title, run_cnt)
     sampling=FirstReaction()
-    observer=IndividualDiseaseObserver()
+    observer=IndividualDiseaseObserver(run_cnt)
 
     run_steps(model, sampling, s->observe(observer, s), rng)
     println("Ran model")
@@ -398,11 +399,15 @@ for (k, v) in disease_exponential
     de_params[k]=1/v
 end
 
+exponential_transition_distributions={
+	"infectious"=>(lm, when, p)->TransitionExponential(p['l'], when)
+}
+
 function run_individual_model()
-    #model=individual_exponential(de_params)
-    #individual_graph_set(exp_model)
-    nonexp_model=individual_nonexponential(disease_nonexponential)
-    individual_graph_set(nonexp_model, "Simulation from Nonexponential Fits to Data")
+    model=individual_exponential(de_params, exponential_transition_distributions)
+    individual_graph_set(model, "Simulation from Exponential Fits to Data", run_cnt)
+    #nonexp_model=individual_nonexponential(disease_nonexponential)
+    #individual_graph_set(nonexp_model, "Simulation from Nonexponential Fits to Data", run_cnt)
 end
 
 function herd_model(params, rng)

@@ -1,8 +1,9 @@
 module SmallGraphs
 # This is in the style of the NetworkX package in Python.
 
+import Base: length
 export SmallGraph, DirectedGraph, UndirectedGraph, UndirectedMultiGraph
-export add_node, add_edge, out_degree, neighbors
+export add_node, add_edge, out_degree, neighbors, length
 
 abstract SmallGraph
 
@@ -79,7 +80,7 @@ add_edge(g::UndirectedGraph, source, target)=
 ####################
 out_degree(g::SmallGraph, node)=length(g.node[node])
 neighbors(g::SmallGraph, node)=keys(g.edge[node])
-
+length(g::SmallGraph)=length(g.node)
 
 ###############################################################
 # The multigraph has a list of edges from each vertex instead
