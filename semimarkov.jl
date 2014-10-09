@@ -6,4 +6,5 @@ module SemiMarkov
     include("marking.jl")
     include("explicitmodel.jl")
     include("transitiondistributions.jl")
+    include("category_fsm.jl")
 end
