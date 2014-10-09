@@ -2,22 +2,16 @@ include("herd.jl")
 include("herd_plot.jl")
 include("herd_observer.jl")
 
+using SemiMarkov.SmallGraphs
+
 cnt=20
-run_cnt=100_000
+run_cnt=10
 seed=32
-beta=2.0
-gamma=1.0
 if length(ARGS)>0
     cnt=int(ARGS[1])
 end
 if length(ARGS)>1
     seed=int(ARGS[2])
-end
-if length(ARGS)>2
-    beta=float(ARGS[3])
-end
-if length(ARGS)>3
-    gamma=float(ARGS[4])
 end
 
 rng=MersenneTwister(seed)
@@ -27,7 +21,7 @@ disease_exponential={
     's'=>2.04, # not clinical to clinical
     'i'=>4.39, # infectious to recovered
     'e'=>10, # clinical back to subclinical (unknown and less important)
-    'g'=>0.5 # rate of infection of neighbor
+    'g'=>0.5, # rate of infection of neighbor
 }
 
 disease_nonexponential={
@@ -35,8 +29,27 @@ disease_nonexponential={
     's'=>(1.222, 1.672),
     'i'=>(3.969, 1.107),
     'e'=>1/10,
-    'g'=>1/0.5
+    'g'=>1/0.5,
+    'f'=>1/4, # rate of infection to next pen
+    'w'=>1/20 # rate of infection to any other animal in domain.
 }
+
+function pen_graph(block_cnt, block_length)
+    g=UndirectedGraph()
+    block_base=1
+    for block_idx in 1:block_cnt
+        add_edge(g, block_base, block_base+1)
+        for row in 2:block_length
+            top=block_base+2*(row-1)
+            bottom=block_base+2*(row-1)+1
+            add_edge(g, top, bottom)
+            add_edge(g, top, top-2)
+            add_edge(g, bottom, bottom-2)
+        end
+        block_base+=2*block_length
+    end
+    g
+end
 
 # Convert scale in days to a hazard per day.
 de_params=Dict{Char,Float64}()
@@ -44,19 +57,16 @@ for (k, v) in disease_exponential
     de_params[k]=1/v
 end
 
-exponential_transition_distributions={
-    "infectious"=>(lm, when, p)->TransitionExponential(p['l'], when)
-}
-
 function herd_model(model, cnt, rng)
-    sampling=FirstReaction()
+    sampling=NextReactionHazards()
     observer=HerdDiseaseObserver(cnt)
     run_steps(model, sampling, s->observe(observer, s), rng)
     show(observer)
 end
 
 de_params['c']=cnt
-#model=individual_exponential_graph(de_params)
 disease_nonexponential['c']=cnt
-model=individual_nonexponential_graph(disease_nonexponential)
-herd_model(model, cnt, rng)
+
+pen_contact=pen_graph(2, 2)
+model=explicit_metapopulation(disease_nonexponential, pen_contact)
+herd_model(model, length(pen_contact)*cnt, rng)

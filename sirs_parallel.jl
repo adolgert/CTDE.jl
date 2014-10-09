@@ -1,6 +1,9 @@
 # You would run it like this. The -p argument is the number of processes.
 # julia sirs_parallel.jl 50 20 4.0 1.0 0.5 34 -p 4
 
+# Uncomment for HDF5. Pkg.add("HDF5")
+# using HDF5, JLD
+
 individual_cnt=int(ARGS[1])
 run_cnt=int(ARGS[2])
 beta=float(ARGS[3])
@@ -44,3 +47,5 @@ for (run_idx, entry) in enumerate(r)
     end
 end
 writedlm("z.txt", results, ',')
+# h5write("z.h5", "sir", results)
+# Use "h5dump z.h5" to see what's in there.
