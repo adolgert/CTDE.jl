@@ -1,3 +1,4 @@
+include("herd_trajectory.jl")
 
 type IndividualDiseaseObserver
     t::Array{Float64,2}
@@ -130,4 +131,8 @@ function plot_observer(eo::HerdDiseaseObserver, title)
         Removed=state[:,4],Subclinical=state[:,5],
         Clinical=state[:,6])
     plot_trajectory(df, title, names)
+end
+
+function save_observer(eo::HerdDiseaseObserver, filename)
+    save_trajectory(eo.state[1:(eo.cnt-1),:], eo.time[1:(eo.cnt-1)], filename)
 end

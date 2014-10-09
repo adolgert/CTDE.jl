@@ -57,17 +57,21 @@ for (k, v) in disease_exponential
     de_params[k]=1/v
 end
 
-function herd_model(model, cnt, rng)
+function herd_model(params, individuals_per_pen, block_cnt, block_length, rng)
+    pen_contact=pen_graph(block_cnt, block_length)
+    model=explicit_metapopulation(params, pen_contact)
+    total=length(pen_contact)*individuals_per_pen
     sampling=NextReactionHazards()
-    observer=HerdDiseaseObserver(cnt)
+    observer=HerdDiseaseObserver(total)
     run_steps(model, sampling, s->observe(observer, s), rng)
     show(observer)
+    save_observer(observer, "metapop.h5")
     plot_observer(observer, "Metapopulation Trajectory")
 end
 
 de_params['c']=cnt
 disease_nonexponential['c']=cnt
 
-pen_contact=pen_graph(2, 2)
-model=explicit_metapopulation(disease_nonexponential, pen_contact)
-herd_model(model, length(pen_contact)*cnt, rng)
+block_cnt=2
+block_length=2
+herd_model(disease_nonexponential, cnt, block_cnt, block_length, rng)
