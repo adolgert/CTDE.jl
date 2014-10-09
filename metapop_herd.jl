@@ -20,7 +20,7 @@ disease_exponential={
     'l'=>3.59, # latent to infectious
     's'=>2.04, # not clinical to clinical
     'i'=>4.39, # infectious to recovered
-    'e'=>10, # clinical back to subclinical (unknown and less important)
+    'e'=>5, # clinical back to subclinical (unknown and less important)
     'g'=>0.5, # rate of infection of neighbor
 }
 
@@ -28,7 +28,7 @@ disease_nonexponential={
     'l'=>(1.782, 3.974),
     's'=>(1.222, 1.672),
     'i'=>(3.969, 1.107),
-    'e'=>1/10,
+    'e'=>1/5,
     'g'=>1/0.5,
     'f'=>1/4, # rate of infection to next pen
     'w'=>1/20 # rate of infection to any other animal in domain.
@@ -62,6 +62,7 @@ function herd_model(model, cnt, rng)
     observer=HerdDiseaseObserver(cnt)
     run_steps(model, sampling, s->observe(observer, s), rng)
     show(observer)
+    plot_observer(observer, "Metapopulation Trajectory")
 end
 
 de_params['c']=cnt

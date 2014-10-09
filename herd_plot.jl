@@ -37,6 +37,23 @@ function smoothed(plot_cnt, data::Array{Float64,2}, names)
         times[i]=dx
     end
     cumulative/=row_cnt
-    DataFrame(Times=times, Infect=cumulative[:,1], Clinical=cumulative[:,2],
-        Removed=cumulative[:,3])
+end
+
+
+function plot_trajectory(df, title, names)
+    myplot=plot(df, layer(x="Times", y="Susceptible", Geom.line,
+            Theme(default_color=color("blue"))),
+        layer(x="Times", y="Latent", Geom.line,
+            Theme(default_color=color("orange"))),
+        layer(x="Times", y="Infectious", Geom.line,
+            Theme(default_color=color("red"))),
+        layer(x="Times", y="Removed", Geom.line,
+            Theme(default_color=color("black"))),
+        layer(x="Times", y="Clinical", Geom.line,
+            Theme(default_color=color("violet"))),
+        layer(x="Times", y="Subclinical", Geom.line,
+            Theme(default_color=color("green")))
+    )
+    filename=join(matchall(r"[A-Za-z]", title))
+    draw(PDF("$(filename).pdf", 20cm, 15cm), myplot)
 end

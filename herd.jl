@@ -209,10 +209,10 @@ function individual_nonexponential_graph(params)
             (lm, when)->begin
                 (TransitionGamma(params['i'][1], params['i'][2], when), Int[])
             end)
-        add_transition(structure, (i,'f'), infectious,
+        add_transition(structure, (i,i,'f'), infectious,
             [((i,'l'),-1),((i,'i'),1)],
             [])
-        add_transition(structure, (i,'d'), recover,
+        add_transition(structure, (i,i,'d'), recover,
             [((i,'i'), -1), ((i,'r'), 1)],
             [])
 
@@ -223,10 +223,10 @@ function individual_nonexponential_graph(params)
         endclinical=ConstExplicitTransition( (lm, when)->begin
             (TransitionExponential(params['e'], when), Int[])
             end)
-        add_transition(structure, (i,'a'), clinical,
+        add_transition(structure, (i,i,'a'), clinical,
             [((i,'n'), -1), ((i,'i'), -1), ((i,'c'), 1), ((i,'i'), 1)],
             [])
-        add_transition(structure, (i,'e'), endclinical,
+        add_transition(structure, (i,i,'e'), endclinical,
             [((i,'c'), -1), ((i,'n'), 1)],
             [])
     end
@@ -279,10 +279,10 @@ function explicit_metapopulation(params, pen_contact_graph)
             (lm, when)->begin
                 (TransitionGamma(params['i'][1], params['i'][2], when), Int[])
             end)
-        add_transition(structure, (i,'f'), infectious,
+        add_transition(structure, (i,i,'f'), infectious,
             [((i,'l'),-1),((i,'i'),1)],
             [])
-        add_transition(structure, (i,'d'), recover,
+        add_transition(structure, (i,i,'d'), recover,
             [((i,'i'), -1), ((i,'r'), 1)],
             [])
 
@@ -293,10 +293,10 @@ function explicit_metapopulation(params, pen_contact_graph)
         endclinical=ConstExplicitTransition( (lm, when)->begin
             (TransitionExponential(params['e'], when), Int[])
             end)
-        add_transition(structure, (i,'a'), clinical,
+        add_transition(structure, (i,i,'a'), clinical,
             [((i,'n'), -1), ((i,'i'), -1), ((i,'c'), 1), ((i,'i'), 1)],
             [])
-        add_transition(structure, (i,'e'), endclinical,
+        add_transition(structure, (i,i,'e'), endclinical,
             [((i,'c'), -1), ((i,'n'), 1)],
             [])
     end
