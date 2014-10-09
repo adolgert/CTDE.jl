@@ -38,13 +38,17 @@ end
 
 function save_trajectory(state::Array{Int64,2}, times::Array{Float64,1},
         filename)
-    h5open(filename, "r+") do file
+    mode="w"
+    if isfile(filename)
+        mode="r+"
+    end
+    h5open(filename, mode) do file
         last=0
         dirnames=names(file["/"])
         if length(dirnames)>0
             last=maximum(Int[int(x) for x in dirnames])
         end
-        println("last entry ", last)
+        #println("last entry ", last)
         g=g_create(file, string(last+1))
         g["state"]=state
         g["time"]=times

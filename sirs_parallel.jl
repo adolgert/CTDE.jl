@@ -1,5 +1,5 @@
 # You would run it like this. The -p argument is the number of processes.
-# julia sirs_parallel.jl 50 20 4.0 1.0 0.5 34 -p 4
+# julia -p 4 sirs_parallel.jl 50 20 4.0 1.0 0.5 34
 
 # Uncomment for HDF5. Pkg.add("HDF5")
 # using HDF5, JLD
