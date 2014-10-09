@@ -6,6 +6,7 @@ using SemiMarkov
 using SemiMarkov.SmallGraphs
 import SemiMarkov: enabled_transitions, current_time, current_time!
 import SemiMarkov: fire, init
+import Base: zero
 
 typealias Time Float64
 
@@ -67,6 +68,8 @@ function initialize_marking(model, contact)
 end
 
 typealias TrajectoryEntry (Int64,Int64,Int64,Time)
+zero(::Type{TrajectoryEntry})=(0,0,0,0.)
+
 type TrajectoryStruct
   s::Int64
   i::Int64
@@ -89,7 +92,7 @@ type HerdDiseaseObserver
     observations_at_times::Array{TrajectoryEntry,1}
     HerdDiseaseObserver(cnt, obs_times)=new(Array(TrajectoryEntry, 10_000),
             1, TrajectoryStruct(int(cnt-1), 1, 0, 0.), 0., obs_times,
-            Array(TrajectoryEntry, length(obs_times)))
+            zeros(TrajectoryEntry, length(obs_times)))
 end
 
 function observe(eo::HerdDiseaseObserver, state)
@@ -127,6 +130,7 @@ function observe(eo::HerdDiseaseObserver, state)
     else
         error("No transition known")
     end
+    #println("eo.sir: ", eo.sir, " last ", last_fired)
     if eo.cnt>length(eo.t)
         new_len=2*eo.cnt
         new_t=Array(TrajectoryEntry, new_len)
@@ -194,4 +198,23 @@ function herd_model(params, cnt, run_cnt, obs_times, rng)
         run_to_stop(model, sampling, s->observe(observer, s), rng)
         println(observer.observations_at_times)
     end
+end
+
+
+function herd_single(params::Dict, cnt::Int, obs_times::Array{Time,1},
+        rng::MersenneTwister)
+    contact=complete_contact_graph(cnt)
+    model=individual_exponential_graph(params, contact)
+
+    sampling=NextReactionHazards()
+    observer=HerdDiseaseObserver(cnt, obs_times)
+    model.state=TokenState(int_marking())
+    initialize_marking(model, contact)
+    run_to_stop(model, sampling, s->observe(observer, s), rng)
+    observer.observations_at_times
+end
+
+# This one pulls rng from scope so that it can be initialized in parallel.
+function herd_single(params::Dict, cnt::Int, obs_times::Array{Time,1})
+    herd_single(params, cnt, obs_times, rng)
 end
