@@ -12,7 +12,7 @@ function plot_density(df, title, names)
         Guide.ylabel("probability distribution of firing"),
         Guide.title(title))
     filename=join(matchall(r"[A-Za-z]", title))
-    draw(PDF("$(filename).pdf", 20cm, 15cm), myplot)
+    draw(PDF("$(filename).pdf", 12cm, 9cm), myplot)
 end
 
 function plot_one_observer(d, name)
@@ -37,6 +37,7 @@ function smoothed(plot_cnt, data::Array{Float64,2}, names)
         times[i]=dx
     end
     cumulative/=row_cnt
+    (cumulative, times)
 end
 
 

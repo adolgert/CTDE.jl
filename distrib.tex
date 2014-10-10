@@ -163,5 +163,17 @@ Hazard
   \lambda(t)=\frac{f(t)}{G(t)}=\frac{(\beta/\alpha)(t/\alpha)^{\beta-1}}
   {1+(t/\alpha)^\beta}
 \end{equation}
+Lastly, we need \code{invlogccdf(d,lp)}, which is $G_d^{-1}(e^{l_p})$,
+or $-\int_0^t(l_p)\lambda(s)ds=l_p$.
+\begin{eqnarray}
+  l_p&=&\ln(G(t)) \\
+  e^{l_p}&=&G(t) \\
+  e^{l_p}&=&\frac{1}{1+(t/\alpha)^\beta} \\
+  e^{-l_p}&=&1+(t/\alpha)^\beta \\
+  (t/\alpha)^\beta&=&  1-e^{-l_p}\\
+  t/\alpha&=& (1-e^{-l_p})^{1/\beta}\\
+   t&=&\alpha(1-e^{-l_p})^{1/\beta}\\
+\end{eqnarray}
+
 
 \end{document}

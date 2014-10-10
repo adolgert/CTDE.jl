@@ -32,14 +32,91 @@ of states, transitions which modify the states, and rates for those
 transitions. For each variant of a model, look at which of these
 three is varied.
 
+\section{Stochastic Compartmental Models in Continuous Time}
+This section explains how to define the kind of model used
+in this article. It doesn't describe how simulation is done.
+
+\begin{figure}
+\centerline{\includegraphics[width=4cm]{place_with_tokens}}
+\caption{Each circle is a place. A token on I1 is a representation
+of individual 1 being infectious. A token on S2 shows individual 2
+is susceptible.\label{fig:placewithtokens}}
+\end{figure}%
+Think of an individual which passes through a series of states.
+It might seem obvious to assign to that individual a category,
+latent, infectious, or recovered. Instead, think of the individual
+as a piece on a checkerboard. Its location on the board indicates
+the state of the individual. The checker is called a Token, and
+the location is called a Place. The Places might be named
+individual-1-is-latent, individual-1-is-infected, and individual-1-is-recovered.
+Were there a second individual, it could be represented by a second
+token on a second set of places,
+individual-2-is-latent, individual-2-is-infected, and individual-2-is-recovered,
+as shown in Fig.~\ref{fig:placewithtokens}.
+There are certain occasions, when using exponenentially-distributed
+transitions, that the Places for both individuals could be combined,
+putting both tokens on an any-individual-is-latent place.
+The state of the system, at any time, is defined by the
+combination of which tokens are at which places, and by the
+enabling times of transitions.
+
+\begin{figure}
+\centerline{\includegraphics[width=5cm]{move_tokens_sir}}
+\caption{Transitions move tokens among places. Green transitions
+are enabled because there are tokens at their input places.
+Each row represents a step in the simulation. After the infection
+transition fires, the token moves, enabling the recovery transition
+and disabling the infection transition. After the next step,
+no transitions are enabled.\label{fig:movetokenssir}}
+\end{figure}%
+Transitions define the dynamics of the system, how and when Tokens
+move among Places. Associated with each transition is a
+conditional probability distribution with a continuous distribution.
+For instance, an animal cannot recover until it has become infected,
+so the distribution for recovery depends upon first being infected,
+corresponding to a Token on the infected place. The arrival
+of a token at the infected place, from some previous transition,
+is said to enable the recovery transition. Once enabled, that
+transition will fire at some later time determined by the
+continuous distribution over times-since-enabling.
+Fig.~\ref{fig:movetokenssir} shows a sequence of transitions
+firing, moving a token to different Places, changing system state.
+
+\begin{figure}
+\centerline{\includegraphics[width=3cm]{censor_gspn}}
+\caption{This represents what medical trials call right-censoring.
+The possible transition to Place D censors data about the rate
+of transitions to Place I, for infections. For instance,
+a cattlebeast could be sent to slaughter before infection
+could occur.\label{fig:censorgspn}}
+\end{figure}%A single transition can depend on the presence of more than one
+input token and can move more than one token when it fires.
+Because of this complexity, transitions are represented not
+with arrows but with rectangles on diagrams. Drawing separate
+transitions on diagrams is a good reminder of a distinction
+familiar to those who work with medical studies and censoring. Given
+a state where two different transitions can fire, each
+disabling the other, each transition has its own distribution
+of times at which it fires. This is shown in
+Fig.~\ref{fig:censorgspn}. These two, together, determine
+a third distribution, the waiting time distribution of
+how long the token remains in the Place since its arrival
+at that Place. If an infected animal can either recover
+or die, then its waiting time in the infected state is
+determined by the transition distributions to the recovered
+and dead states. Speaking of an ``infection interval'' can,
+in the presence of competing transitions, be unclear.
+
+
 
 \section{FMDV progress within an individual}
 \begin{figure}
 \centerline{\includegraphics[width=9cm]{mardones_states}}
-\caption{States of FMDV from Mardones et al.\cite{Mardones2010}.\label{fig:mardones_states}}
+\caption{Time points for observations from Mardones et al.\cite{Mardones2010}.
+Each observation is a transition to a new state.\label{fig:mardones_states}}
 \end{figure}
 \begin{figure}
-\centerline{\begin{tabular}{llll}
+\centerline{\begin{tabular}{lllll}
 \hline
 FMD stage & time interval [days] & State Transition & Poisson & Distribution \\ \hline
 Latent &  $t_1-t_0$ & $(I,0,0)$--$(I,1,0)$ & 3.59 & Weibull ($\alpha=1.782$, $\beta=3.974$) \\
@@ -59,9 +136,7 @@ Infected & 0 & 0 & Latent state \\
 Infected & 0 & 1 & not seen \\
 Infected & 1 & 0 & Infectious, sub-clinical \\
 Infected & 1 & 1 & Infectious, clinical \\
-Recovered & 1 & 1 & not seen \\
 Recovered & 0 & 1 & Recovered, clinical \\
-Recovered & 1 & 0 & not seen \\
 Recovered & 0 & 0 & Recovered, sub-clinical
 \end{tabular}}
 \caption{This lists all possible states of an individual
@@ -128,7 +203,31 @@ shown in Mardones et al., but they both capture
 the most important stages of FMDV.
 
 \begin{figure}
-\centerline{\includegraphics[width=9cm]{individual_gspn}}
+\centerline{\includegraphics[width=4cm]{all_states}}
+\caption{This shows all possible states for an individual.
+The solid lines represent the abstract possibility for a transition
+among neighboring states, in either direction from state to state.
+Our model must be a subset of these
+states and transitions. The ordering of events in Mardones et
+al.\ suggests only the path colored black.\label{fig:all_states}}
+\end{figure}
+\begin{figure}
+\centerline{\includegraphics[width=4cm]{state_space_mardones}}
+\caption{The Mardones paper suggests a time-ordered set of
+states, shown with solid lines. It is not possible for an
+animal to become clinical when it is not yet infectious.
+If the times, $t_3$ and $t_4$ may be reordered, $t_4<t_3$,
+so that clinical recovery can occur before recovery from
+infection,
+then the dotted line shows an allowed transition for which
+the sequence of transitions is labeled.
+The GSPN representations shown below will disallow the
+transition labeled 4, but permitting it could be done,
+as well.\label{fig:state_space_mardones}}
+\end{figure}
+
+\begin{figure}
+\centerline{\includegraphics[width=6cm]{individual_gspn}}
 \caption{The four compartmental states of an animal with FMDV
 are represented by two categories, $(S,I,R)$ and $(N,C)$
 where $N$ and $C$ represented not-clinical or clinical.
@@ -136,8 +235,67 @@ Computation proceeds by moving a token among $(S,I,R)$ and a
 second token among $(N,C)$. Rectangles represent transitions,
 which are enabled only when tokens are at all input edges to the
 transition.\label{fig:individual_gspn}}
-\end{figure}%
+\end{figure}
+\begin{figure}
+\centerline{\includegraphics[width=4cm]{state_space_dependent}}
+\caption{For the GSPN shown in Fig.~\ref{fig:individual_gspn},
+the allowed set of transitions includes the possibility
+of not traversing the state $(I,1,1)$ at any point. That is,
+the animal will never be clinical if it recovers sooner
+than it becomes clinical. This depends on the choice of
+distributions for firing times.\label{fig:state_space_dependent}}
+\end{figure}
 
+
+\begin{figure}
+\centerline{\includegraphics[width=4cm]{individual_indep_gspn}}
+\caption{Here the transition to clinical is considered independent
+of when the individual becomes infectious. The initial state of the
+system consists of three tokens, one at Id, the infected state,
+one at NI, the not-infectious state, and one at NC, the not-clinical
+state. When tokens are located at the removed state, R, and the NI
+and NC states, the disease has run its course in this individual.
+\label{fig:individual_indep_gspn}}
+\end{figure}
+\begin{figure}
+\centerline{\includegraphics[width=4cm]{state_space_independent}}
+\caption{The state space and transitions for Fig.~\ref{fig:individual_indep_gspn}
+does include the possibility of becoming clinical before
+becoming infectious, because the two transitions are simultaneous
+and independent. That is shown with labels 2. and 3.
+How often this state occurs is controlled by the shape
+of the incubation distribution.\label{fig:state_space_independent}}
+\end{figure}
+
+\begin{figure}
+\centerline{\includegraphics{SimulationwithDependentClinicalPeriod}}
+\caption{This simulation first finds the time until
+infectiousness begins and simulates start of clinical symptoms
+from that time point.
+Blue=infectious, Green=clinical, Orange=removed. The mass near
+zero for clinical cases indicates simulations where the individual
+entered the removed state before it could become clinical.
+\label{fig:depclinicalindividual}}
+\end{figure}
+\begin{figure}
+\centerline{\includegraphics{SimulationwithIndependentClinicalPeriod}}
+\caption{This simulation uses the Incubation distribution from
+Mardones et al.\ in order to estimate the incubation period
+independent from the beginning of the infectious period.
+Blue=infectious, Green=clinical, Orange=removed. The mass near
+zero for clinical cases indicates simulations where the individual
+entered the removed state before it could become clinical.
+\label{fig:indepclinicalindividual}}
+\end{figure}
+\begin{figure}
+\centerline{\includegraphics{SimulationfromExponentialFitstoData}}
+\caption{Were the simulation to use exponential fits to observation
+data, this would be the predicted distribution of infection,
+clinical sign and recovery. The average times to each are the same
+as those in the nonexponential fits, but the distribution of
+times is much different.
+\label{fig:individualexponential}}
+\end{figure}
 Simulations of both models show that, while average rates
 are the same, the distribution
 of times to infection or recovery can be quite different.

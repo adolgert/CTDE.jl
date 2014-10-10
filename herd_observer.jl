@@ -35,7 +35,7 @@ end
 
 function plot_observer(eo::IndividualDiseaseObserver, title)
     names=["time to infectious", "time to clinical", "time to recovered"]
-    cumulative=smoothed(100, eo.t[:,1:3], names)
+    (cumulative, times)=smoothed(100, eo.t[:,1:3], names)
     df=DataFrame(Times=times, Infect=cumulative[:,1], Clinical=cumulative[:,2],
             Removed=cumulative[:,3])
     plot_density(df, title, names)

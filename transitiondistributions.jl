@@ -4,7 +4,7 @@ import Distributions: quantile, rand, cdf, logccdf, invlogccdf
 import Base: rand, push!, isless
 
 export TransitionDistribution, WrappedDistribution, TransitionExponential
-export TransitionWeibull, TransitionGamma
+export TransitionWeibull, TransitionGamma, TransitionLogLogistic
 export rand, test, hazard_integral, implicit_hazard_integral, cdf
 export parameters, quantile
 export EmpiricalDistribution, push!, build!
@@ -211,51 +211,38 @@ end
 
 ##################################
 # F(t)=1/(1 + ((t-te)/α)^(-β))
-type TransitionLogLogistic
+type LogLogistic <: Distributions.ContinuousUnivariateDistribution
     alpha::Float64
     beta::Float64
-    te::Float64
 end
 
-parameters(d::TransitionLogLogistic)=Float64[d.apha, d.beta, d.te]
-
-function rand(d::TransitionLogLogistic, now, rng::MersenneTwister)
-    quantile(d, now, rand(rng))
+function rand(d::LogLogistic, rng::MersenneTwister)
+    quantile(d, rand(rng))
 end
 
-function quantile(d::TransitionLogLogistic, U::Float64)
-    d.te+d.alpha*(U/(1-U))^(1/d.beta)
+function quantile(d::LogLogistic, U::Float64)
+    d.alpha*(U/(1-U))^(1/d.beta)
 end
 
-function quantile(d::TransitionLogLogistic, t0::Float64, U::Float64)
-    d.te+quantile(d, U+(1-U)*cdf(d, t0-d.te))
+function cdf(d::LogLogistic, t::Real)
+    1/(1+(t/d.alpha)^(-d.beta))
 end
 
 # Survival
-function ccdf(d::TransitionLogLogistic, t)
-    1/((1+(t-d.te)/d.alpha)^d.beta)
+function ccdf(d::LogLogistic, t::Real)
+    1/(1+(t/d.alpha)^d.beta)
 end
 
-function logccdf(d::TransitionLogLogistic, t)
-    -log( 1 + ((t-d.te)/d.alpha)^d.beta )
+function logccdf(d::LogLogistic, t::Real)
+    -log( 1 + (t/d.alpha)^d.beta )
 end
 
-function hazard_integral(d::TransitionLogLogistic, t1, t2)
-    logccdf(d, t1)-logccdf(d, t2)
+function invlogccdf(d::LogLogistic, lp::Real)
+    d.alpha*(1-exp(-lp)^(1/d.beta))
 end
 
-function cdf(d::TransitionLogLogistic, t)
-    1/(1+((t-d.te)/d.alpha)^(-d.beta))
-end
-
-function cdf(d::TransitionLogLogistic, t, t0)
-    tte=cdf(d, t)
-    t0te=cdf(d, t0)
-    (tte-t0te)/(1-t0te)
-end
-
-function implicit_hazard_integral(dist::TransitionLogLogistic, xa, t0)
-    d.te+invlog
+function TransitionLogLogistic(a::Float64, b::Float64, t::Float64)
+    WrappedDistribution(LogLogistic(a,b), t)
 end
 
 #################################

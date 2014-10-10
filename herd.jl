@@ -44,7 +44,7 @@ function individual_exponential(params, transition_distributions)
     	[('n', -1), ('i', -1), ('c', 1), ('i', 1)],
     	[])
     add_transition(structure, 'e', endclinical,
-    	[('c', -1), ('r',-1) ('n', 1), ('r',1)],
+    	[('c', -1), ('r',-1), ('n', 1), ('r',1)],
     	[])
 
     reset=ConstExplicitTransition( (lm, when)->begin
@@ -163,7 +163,7 @@ function individual_independent(params)
         (TransitionExponential(1.0, when), Int[])
     end)
     add_transition(structure, 'z', reset,
-        [('n', -1), ('r', -1), ('n', 1), ('l', 1)],
+        [('n', -1), ('r', -1), ('n', 1), ('i', 1)],
         [])
 
     add_tokens(model.state.marking, 'i', 1)

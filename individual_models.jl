@@ -2,22 +2,13 @@ include("herd.jl")
 include("herd_plot.jl")
 include("herd_observer.jl")
 
-cnt=20
 run_cnt=100_000
 seed=32
-beta=2.0
-gamma=1.0
 if length(ARGS)>0
-    cnt=int(ARGS[1])
+    run_cnt=int(ARGS[1])
 end
 if length(ARGS)>1
     seed=int(ARGS[2])
-end
-if length(ARGS)>2
-    beta=float(ARGS[3])
-end
-if length(ARGS)>3
-    gamma=float(ARGS[4])
 end
 
 rng=MersenneTwister(seed)
@@ -41,9 +32,10 @@ disease_exponential={
 }
 
 disease_nonexponential={
-    'l'=>(1.782, 3.974),
+    'l'=>(3.974, 1.782),    # 'l'=>(1.782, 3.974),
     's'=>(1.222, 1.672),
     'i'=>(3.969, 1.107),
+    'u'=>(5.3, 4.02),
     'e'=>1/10,
     'g'=>1/0.5
 }
@@ -59,10 +51,13 @@ exponential_transition_distributions={
 }
 
 function run_individual_model()
-    model=individual_exponential(de_params, exponential_transition_distributions)
-    individual_graph_set(model, "Simulation from Exponential Fits to Data", run_cnt)
-    #nonexp_model=individual_nonexponential(disease_nonexponential)
-    #individual_graph_set(nonexp_model, "Simulation from Nonexponential Fits to Data", run_cnt)
+    # model=individual_exponential(de_params, exponential_transition_distributions)
+    # individual_graph_set(model, "Simulation from Exponential Fits to Data", run_cnt)
+    # nonexp_model=individual_nonexponential(disease_nonexponential)
+    # individual_graph_set(nonexp_model, "Simulation with Dependent Clinical Period", run_cnt)
+    indep_model=individual_independent(disease_nonexponential)
+    individual_graph_set(indep_model,
+            "Simulation with Independent Clinical Period", run_cnt)
 end
 
 run_individual_model()
