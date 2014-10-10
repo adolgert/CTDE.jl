@@ -44,13 +44,13 @@ function individual_exponential(params, transition_distributions)
     	[('n', -1), ('i', -1), ('c', 1), ('i', 1)],
     	[])
     add_transition(structure, 'e', endclinical,
-    	[('c', -1), ('n', 1)],
+    	[('c', -1), ('r',-1) ('n', 1), ('r',1)],
     	[])
 
     reset=ConstExplicitTransition( (lm, when)->begin
     	(TransitionExponential(1.0, when), Int[])
 	end)
-    add_transition(structure, 'z', endclinical,
+    add_transition(structure, 'z', reset,
     	[('n', -1), ('r', -1), ('n', 1), ('l', 1)],
     	[])
 
@@ -99,13 +99,13 @@ function individual_nonexponential(params)
         [('n', -1), ('i', -1), ('c', 1), ('i', 1)],
         [])
     add_transition(structure, 'e', endclinical,
-        [('c', -1), ('n', 1)],
+        [('c', -1), ('r', -1), ('n', 1), ('r', 1)],
         [])
 
     reset=ConstExplicitTransition( (lm, when)->begin
         (TransitionExponential(1.0, when), Int[])
     end)
-    add_transition(structure, 'z', endclinical,
+    add_transition(structure, 'z', reset,
         [('n', -1), ('r', -1), ('n', 1), ('l', 1)],
         [])
 
@@ -115,6 +115,64 @@ function individual_nonexponential(params)
 
     model
 end
+
+
+
+function individual_independent(params)
+    state=TokenState(int_marking())
+    model=ExplicitGSPNModel(state)
+    structure=model.structure
+    add_place(structure, 'i') # infected
+    add_place(structure, 'r') # recovered
+    add_place(structure, 'n') # not clinical
+    add_place(structure, 'c') # clinical
+    add_place(structure, 'm') # not infectious
+    add_place(structure, 'o') # infectious
+
+    # The basic SIR
+    infectious=ConstExplicitTransition(
+        (lm, when)->begin
+            (TransitionWeibull(params['l'][1], params['l'][2], when), Int[])
+        end)
+    recover=ConstExplicitTransition(
+        (lm, when)->begin
+            (TransitionGamma(params['i'][1], params['i'][2], when), Int[])
+        end)
+    add_transition(structure, 'f', infectious,
+        [('i',-1),('m',-1),('i',1),('o',1)],
+        [])
+    add_transition(structure, 'd', recover,
+        [('i', -1), ('o', -1),('r',1),('m',1)],
+        [])
+
+    # Incubation
+    incubate=ConstExplicitTransition( (lm, when)->begin
+        (TransitionLogLogistic(params['u'][1], params['u'][2], when), Int[])
+        end)
+    endclinical=ConstExplicitTransition( (lm, when)->begin
+        (TransitionExponential(params['e'], when), Int[])
+        end)
+    add_transition(structure, 'a', incubate,
+        [('n', -1), ('i', -1), ('c', 1), ('i', 1)],
+        [])
+    add_transition(structure, 'e', endclinical,
+        [('c', -1), ('r',-1), ('n', 1), ('r',1)],
+        [])
+
+    reset=ConstExplicitTransition( (lm, when)->begin
+        (TransitionExponential(1.0, when), Int[])
+    end)
+    add_transition(structure, 'z', reset,
+        [('n', -1), ('r', -1), ('n', 1), ('l', 1)],
+        [])
+
+    add_tokens(model.state.marking, 'i', 1)
+    add_tokens(model.state.marking, 'n', 1)
+    add_tokens(model.state.marking, 'm', 1)
+
+    model
+end
+
 
 
 function individual_exponential_graph(params)
