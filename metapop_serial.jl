@@ -16,7 +16,15 @@ block_length=3
 
 rng=MersenneTwister(seed)
 println("total individuals ", block_cnt*block_length*2*cnt)
-herd_model(disease_nonexponential, 10, 1, block_length,
+herd_model(disease_nonexponential, 5, 1, 2,
    "metapop.h5", rng)
-herd_model(disease_nonexponential, cnt, block_cnt, block_length,
+# Profile.clear()
+# Profile.init(10^7, 0.001)
+
+@time herd_model(disease_nonexponential, cnt, block_cnt, block_length,
    "metapop.h5", rng)
+
+# Profile.print(open("prof.txt","w"))
+# Start
+# elapsed time: 393.991072396 seconds (12082794888 bytes allocated, 85.22% gc time
+
