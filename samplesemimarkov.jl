@@ -165,6 +165,7 @@ function enable(propagator::NextReactionHazards, key, distribution, now, rng)
 		record=TransitionRecord(interval, now, handle, distribution)
 		propagator.transition_state[key]=record
 	end
+    @debug("SampleSemiMarkov.enable exit")
 end
 
 # Remove a transition from the queue because it was disabled.

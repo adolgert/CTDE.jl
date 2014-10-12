@@ -5,6 +5,13 @@
 # containers. The user code can look in those containers.
 # TokenCreator makes tokens and destroys them. This would handle
 # reusing ids, for instance.
+#
+# What makes the marking difficult
+# - There can be user-defined tokens with internal state.
+# - There can be more than one kind of token, with its own container type.
+# - Empty places are deleted from the dictionary.
+# - Creation and deletion of tokens can be complicated user code
+#   For example, re-using the id of a cow. Generating a new cow with sex.
 # 
 import Base: length, pop!, getindex
 export TokenMarking, add_tokens, length

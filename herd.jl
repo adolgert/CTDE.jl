@@ -55,8 +55,8 @@ function individual_exponential(params, transition_distributions)
     	[])
 
 
-    add_tokens(model.state.marking, 'l', 1)
-    add_tokens(model.state.marking, 'n', 1)
+    add_tokens(model, 'l', 1)
+    add_tokens(model, 'n', 1)
 
     model
 end
@@ -110,8 +110,8 @@ function individual_nonexponential(params)
         [])
 
 
-    add_tokens(model.state.marking, 'l', 1)
-    add_tokens(model.state.marking, 'n', 1)
+    add_tokens(model, 'l', 1)
+    add_tokens(model, 'n', 1)
 
     model
 end
@@ -163,12 +163,12 @@ function individual_independent(params)
         (TransitionExponential(1.0, when), Int[])
     end)
     add_transition(structure, 'z', reset,
-        [('n', -1), ('r', -1), ('n', 1), ('i', 1)],
+        [('n', -1), ('r', -1), ('n', 1), ('l', 1)],
         [])
 
-    add_tokens(model.state.marking, 'i', 1)
-    add_tokens(model.state.marking, 'n', 1)
-    add_tokens(model.state.marking, 'm', 1)
+    add_tokens(model, 'i', 1)
+    add_tokens(model, 'n', 1)
+    add_tokens(model, 'm', 1)
 
     model
 end
@@ -233,11 +233,11 @@ function individual_exponential_graph(params)
     end
 
     for i in 1:(cnt-1)
-        add_tokens(model.state.marking, (i,'s'), 1)
-        add_tokens(model.state.marking, (i,'n'), 1)
+        add_tokens(model, (i,'s'), 1)
+        add_tokens(model, (i,'n'), 1)
     end
-    add_tokens(model.state.marking, (cnt,'i'), 1)
-    add_tokens(model.state.marking, (cnt,'n'), 1)
+    add_tokens(model, (cnt,'i'), 1)
+    add_tokens(model, (cnt,'n'), 1)
 
     model
 end
@@ -301,11 +301,11 @@ function individual_nonexponential_graph(params)
     end
 
     for i in 1:(cnt-1)
-        add_tokens(model.state.marking, (i,'s'), 1)
-        add_tokens(model.state.marking, (i,'n'), 1)
+        add_tokens(model, (i,'s'), 1)
+        add_tokens(model, (i,'n'), 1)
     end
-    add_tokens(model.state.marking, (cnt,'i'), 1)
-    add_tokens(model.state.marking, (cnt,'n'), 1)
+    add_tokens(model, (cnt,'i'), 1)
+    add_tokens(model, (cnt,'n'), 1)
 
     model
 end
@@ -379,11 +379,11 @@ function explicit_metapopulation(params, pen_contact_graph)
     end
 
     for i in 2:total
-        add_tokens(model.state.marking, (i,'s'), 1)
-        add_tokens(model.state.marking, (i,'n'), 1)
+        add_tokens(model, (i,'s'), 1)
+        add_tokens(model, (i,'n'), 1)
     end
-    add_tokens(model.state.marking, (1,'i'), 1)
-    add_tokens(model.state.marking, (1,'n'), 1)
+    add_tokens(model, (1,'i'), 1)
+    add_tokens(model, (1,'n'), 1)
 
     model
 end

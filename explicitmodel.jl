@@ -2,10 +2,10 @@
 using Distributions
 using Graphs
 
-import Base: push!, length, pop!, get
+import Base: push!, length, pop!, get, print
 export ExplicitGSPNModel, ConstExplicitTransition
 export ExplicitGSPN, add_place, add_transition, current_time
-export sir_explicit, fire, enabled_transitions
+export sir_explicit, fire, enabled_transitions, print
 
 
 abstract ExplicitTransition
@@ -56,6 +56,30 @@ function ExplicitGSPN()
         Array(EdgeProperty,0), Array(ConstExplicitTransition,0), -1)
 end
 
+function print(io::IO, g::ExplicitGSPN)
+    println(io, "GSPN v ", num_vertices(g.gspn), " e ", num_edges(g.gspn))
+    for (id, name) in enumerate(g.id_to_pt)
+        assert(g.pt_to_id[name]==id)
+    end
+    print(io, "places ")
+    for ppidx in 1:g.transition_base
+        print(io, g.id_to_pt[ppidx], ", ")
+    end
+    println(io)
+
+    println(io, "transitions")
+    assert(length(g.id_to_pt)-g.transition_base==length(g.transition_prop))
+    for ptidx in (g.transition_base+1):length(g.id_to_pt)
+        name=g.id_to_pt[ptidx]
+        print(io, name, " ", ptidx, ": ")
+        transition_places(g, ptidx) do place_id, stoich, name
+            place=g.id_to_pt[place_id]
+            print(io, "(", place, ", ", stoich, ", ", name, ") ")
+        end
+        println(io)
+    end
+end
+
 transitionobj(eg::ExplicitGSPN, id)=eg.transition_prop[id-eg.transition_base]
 transitionids(eg::ExplicitGSPN)=(eg.transition_base+1):length(eg.id_to_pt)
 
@@ -86,21 +110,21 @@ function add_transition(structure::ExplicitGSPN, transition_name, transition,
     end
     push!(structure.id_to_pt, transition_name)
     id=length(structure.id_to_pt)
+    structure.pt_to_id[transition_name]=id
     add_vertex!(structure.gspn, id)
     push!(structure.transition_prop, transition)
 
     entry_idx=1
     for entry in stoichiometry
         (place, stoichiometric_number)=entry[1:2]
-        properties={"stoich"=>stoichiometric_number}
         local_name=string(entry_idx)
         if Base.length(entry)>2
             local_name=entry[3]
         end
         place_id=structure.pt_to_id[place]
+        add_edge!(structure.gspn, id, place_id)
         ep=EdgeProperty(stoichiometric_number, local_name)
         push!(structure.edge_prop, ep)
-        add_edge!(structure.gspn, id, place_id)
         entry_idx+=1
     end
     # The dependency graph is a separate entity but
@@ -112,10 +136,23 @@ function add_transition(structure::ExplicitGSPN, transition_name, transition,
     end
 end
 
+# Iterates over the gspn.
 function transition_places(f::Function, eg::ExplicitGSPN, transition_id::Int64)
     for edge in out_edges(transition_id, eg.gspn)
         ep=eg.edge_prop[edge_index(edge)]
-        f(target(edge, eg.gspn), ep.stoichiometry, ep.local_name)
+        if ep.stoichiometry!=0
+            f(target(edge, eg.gspn), ep.stoichiometry, ep.local_name)
+        end
+    end
+end
+
+# Iterates over the dependency graph.
+function transition_dependencies(f::Function, eg::ExplicitGSPN, transition_id::Int64)
+    for edge in out_edges(transition_id, eg.gspn)
+        ep=eg.edge_prop[edge_index(edge)]
+        if ep.stoichiometry==0
+            f(target(edge, eg.gspn), ep.stoichiometry, ep.local_name)
+        end
     end
 end
 
@@ -165,18 +202,20 @@ function add_tokens(model::ExplicitGSPNModel, place::Any, n::Int64)
 end
 
 function stoichiometry_satisfied(model::ExplicitGSPNModel, transition_id::Int64)
+    #@debug("stoichiometry_satisfied enter ", transition_id)
     # Policy: Whether the output places must have no tokens.
-    transition_places(model.structure, transition_id) do place, stoich, local_name
+    satisfied=true
+    transition_places(model.structure,
+            transition_id) do place::Int64, stoich::Int64, local_name::ASCIIString
         if stoich<0
-            token_cnt=length(model.state.marking, place)
-            @debug("stoich ", transition_id, " (", stoichiometric_number, ", ", token_cnt, ")")
+            token_cnt=length(model.state.marking, place)::Int64
+            @debug("stoich ", transition_id, " (", place, ", ", stoich, ", ", token_cnt, ")")
             if (stoich+token_cnt)<0
-                @debug("stoich ", transition_id, "false")
-                return false
+                satisfied=false
             end
         end
     end
-    return true
+    satisfied
 end
 
 # The correct enabling time to send is the current time if we are asking whether
@@ -184,12 +223,10 @@ end
 # an enabled transition, then send its already-known enabling time.
 function transition_distribution(model::ExplicitGSPNModel, transition_id, enabling)
     local_marking=Dict{ASCIIString,Any}()
-    transition_places(model.structure, transition_id) do place, stoich, name
-        if stoich==0
-            #@debug("trans ",place," prop ",edge_properties)
-            mp=model.state.marking[place]
-            local_marking[name]=mp
-        end
+    transition_dependencies(model.structure, transition_id) do place, stoich, name
+        #@debug("trans ",place," prop ",edge_properties)
+        mp=model.state.marking[place]
+        local_marking[name]=mp
     end
     transition=transitionobj(model.structure, transition_id)
     dist, invariant=distribution(transition, local_marking, enabling)
@@ -197,7 +234,10 @@ end
 
 function examine_transition(model::ExplicitGSPNModel, transition_id,
         enable::Function, disable::Function)
+    #@debug("examine_transition enter ", transition_id)
     stoichiometrically_allowed=stoichiometry_satisfied(model, transition_id)
+    @debug("examine_transition allowed ", transition_id, " ",
+            stoichiometrically_allowed)
     if !stoichiometrically_allowed
         if haskey(model.state.enabling, transition_id)
             pop!(model.state.enabling, transition_id)
@@ -235,15 +275,17 @@ function examine_transition(model::ExplicitGSPNModel, transition_id,
             # Was disabled. Still disabled.
         end
     end
+    #@debug("examine_transition exit")
 end
 
 init(model::ExplicitGSPNModel)=enable_transitions(model)
 
 # Enables transitions consistent with the current marking.
 function enable_transitions(model::ExplicitGSPNModel)
-  for transition_id in transitionids(model.structure)
-    examine_transition(model, transition_id, (x...)->nothing, (x...)->nothing)
-  end
+    for transition_id in transitionids(model.structure)
+        examine_transition(model, transition_id, (x...)->nothing, (x...)->nothing)
+    end
+    @debug("enable_transitions enabled ", model.state.enabling)
 end
 
 
@@ -293,7 +335,8 @@ end
 
 function fire(model::ExplicitGSPNModel, id_time::NRTransition,
         enable::Function, disable::Function, rng)
-    @debug("ExplicitGSPNModel.fire enter ", model.state.last_fired)
+    @debug("ExplicitGSPNModel.fire enter ", model.state.last_fired, " idt ",
+            id_time)
     transition_id=id_time.key
     affected_places=transition_action(model, transition_id)
 
@@ -302,8 +345,8 @@ function fire(model::ExplicitGSPNModel, id_time::NRTransition,
     current_time!(model, id_time.time)
 
     examine_transitions=dependent_transitions(model.structure, affected_places)
-    @debug("ExplicitGSPNModel.fire affected ", affected_places,
-            " exam_trans ", examine_transitions)
+    # @debug("ExplicitGSPNModel.fire affected ", affected_places,
+    #         " exam_trans ", examine_transitions)
     for t in examine_transitions
         examine_transition(model, t, enable, disable)
     end
