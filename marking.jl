@@ -96,29 +96,29 @@ end
 # The marking is a dict which represents no tokens
 # by not having a key internally.
 type TokenMarking{C, TC}
-    dict::Dict{Any,C}
+    dict::Dict{Int64,C}
     token_creator::TC
 end
 
 function TokenMarking(token_type::DataType)
     creator=DefaultTokenCreator{token_type}()
-    TokenMarking(Dict{Any,TokenContainer{token_type}}(), creator)
+    TokenMarking(Dict{Int64,TokenContainer{token_type}}(), creator)
 end
 
 function TokenMarking(creator::TokenCreator)
-    TokenMarking(Dict{Any,TokenContainer{creator.token_type}}(), creator)
+    TokenMarking(Dict{Int64,TokenContainer{creator.token_type}}(), creator)
 end
 
 function int_marking()
     TokenMarking{IntContainer,IntTokenCreator}(
-            Dict{Any,IntContainer}(), IntTokenCreator())
+            Dict{Int64,IntContainer}(), IntTokenCreator())
 end
 
 function empty_container(marking::TokenMarking)
     create(marking.token_creator, 0)
 end
 
-function length(marking::TokenMarking, place)
+function length(marking::TokenMarking, place::Int64)
     if haskey(marking.dict, place)
         return length(marking.dict[place])
     end
@@ -126,7 +126,7 @@ function length(marking::TokenMarking, place)
 end
 
 # Returns a TokenContainer.
-function getindex(marking::TokenMarking, place)
+function getindex(marking::TokenMarking, place::Int64)
     if haskey(marking.dict, place)
         return marking.dict[place]
     else
@@ -135,14 +135,14 @@ function getindex(marking::TokenMarking, place)
     end
 end
 
-function take!(marking::TokenMarking, place, dest, n::Int)
+function take!(marking::TokenMarking, place::Int64, dest, n::Int)
     move!(marking[place], dest, n)
     if length(marking.dict[place])==0
         pop!(marking.dict, place)
     end
 end
 
-function fill!(marking::TokenMarking, place, source, n::Int)
+function fill!(marking::TokenMarking, place::Int64, source, n::Int)
     if !haskey(marking.dict, place)
         marking.dict[place]=create(marking.token_creator, 0)
     end
@@ -155,7 +155,7 @@ function fill!(marking::TokenMarking, place, source, n::Int)
     move!(source, marking.dict[place], n)
 end
 
-function add_tokens(marking::TokenMarking, place, n::Int)
+function add_tokens(marking::TokenMarking, place::Int64, n::Int)
     if !haskey(marking.dict, place)
         marking.dict[place]=create(marking.token_creator, n)
     else
@@ -166,23 +166,23 @@ end
 
 type EnablingRecord
     time::Float64
-    invariant::Array{Int,1}
+    invariant::Array{Int64,1}
 end
 
 # The state of the system.
-type TokenState
-    marking # Marking, by place.
-    enabling::Dict{Any,EnablingRecord} # Enabling time, by transition id.
+type TokenState{M}
+    marking::M # Marking, by place.
+    enabling::Dict{Int64,EnablingRecord} # Enabling time, by transition id.
     current_time::Float64 # Current system time.
     # The last transition fired is part of the state only during
     # the brief time invariants about consistency are broken, namely
     # that we update the marking for a transition but have not yet
     # recalculated which transitions are enabled.
-    last_fired
+    last_fired::Any
 end
 
 function TokenState(marking)
-    TokenState(marking, Dict{Any,Float64}(), 0.0, nothing)
+    TokenState(marking, Dict{Int64,EnablingRecord}(), 0.0, nothing)
 end
 
 function marked_enabled(state::TokenState, transition)

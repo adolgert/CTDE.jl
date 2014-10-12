@@ -56,7 +56,7 @@ function herd_model(params, individuals_per_pen, block_cnt, block_length,
     sampling=NextReactionHazards()
     observer=HerdDiseaseObserver(total)
     println("start run")
-    run_steps(model, sampling, s->observe(observer, s), rng)
+    @time run_steps(model, sampling, s->observe(observer, s), rng)
     #show(observer)
     println("save observer")
     save_observer(observer, save_file)

@@ -147,11 +147,12 @@ function transition_places(f::Function, eg::ExplicitGSPN, transition_id::Int64)
 end
 
 # Iterates over the dependency graph.
-function transition_dependencies(f::Function, eg::ExplicitGSPN, transition_id::Int64)
+function transition_dependencies(f::Function, eg::ExplicitGSPN, transition_id::Int64,
+        lm::Dict{ASCIIString,Any})
     for edge in out_edges(transition_id, eg.gspn)
         ep=eg.edge_prop[edge_index(edge)]
         if ep.stoichiometry==0
-            f(target(edge, eg.gspn), ep.stoichiometry, ep.local_name)
+            f(target(edge, eg.gspn), ep.stoichiometry, ep.local_name, lm)
         end
     end
 end
@@ -159,8 +160,8 @@ end
 function dependent_transitions(eg::ExplicitGSPN, place_id::Set{Int64})
     affected=Set{Int64}()
     for p in place_id
-        for on in out_neighbors(p, eg.gspn)
-            push!(affected, on)
+        for oe in out_edges(p, eg.gspn)
+            push!(affected, target(oe, eg.gspn))
         end
     end
     affected
@@ -170,9 +171,9 @@ abstract Model
 
 # A model has both state and structure.
 # This is what is presented to the propagator.
-type ExplicitGSPNModel <: Model
+type ExplicitGSPNModel{T} <: Model
     structure::ExplicitGSPN
-    state
+    state::T
 end
 
 function ExplicitGSPNModel(state)
@@ -204,7 +205,7 @@ end
 function stoichiometry_satisfied(model::ExplicitGSPNModel, transition_id::Int64)
     #@debug("stoichiometry_satisfied enter ", transition_id)
     # Policy: Whether the output places must have no tokens.
-    satisfied=true
+    satisfied::Bool=true
     transition_places(model.structure,
             transition_id) do place::Int64, stoich::Int64, local_name::ASCIIString
         if stoich<0
@@ -223,10 +224,10 @@ end
 # an enabled transition, then send its already-known enabling time.
 function transition_distribution(model::ExplicitGSPNModel, transition_id, enabling)
     local_marking=Dict{ASCIIString,Any}()
-    transition_dependencies(model.structure, transition_id) do place, stoich, name
+    transition_dependencies(model.structure, transition_id, local_marking) do place, stoich, name, lm
         #@debug("trans ",place," prop ",edge_properties)
         mp=model.state.marking[place]
-        local_marking[name]=mp
+        lm[name]=mp
     end
     transition=transitionobj(model.structure, transition_id)
     dist, invariant=distribution(transition, local_marking, enabling)

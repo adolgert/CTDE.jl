@@ -3,7 +3,7 @@ export run_steps
 function run_steps(model, sampling, report, rng)
     running=true
     init(sampling, model, rng)
-    trans=NRTransition(model.state.last_fired, current_time(model))
+    trans=NRTransition(-1, current_time(model))
     steps=0
     while running
         @debug("run_steps next")
