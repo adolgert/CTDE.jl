@@ -175,5 +175,55 @@ or $-\int_0^t(l_p)\lambda(s)ds=l_p$.
    t&=&\alpha(1-e^{-l_p})^{1/\beta}\\
 \end{eqnarray}
 
+\section{Gamma}
+We will define paramaters from the shape $\alpha$ and rate $\beta$.
+\begin{equation}
+  f(x)=\frac{\beta^\alpha}{\Gamma(\alpha)}x^{\alpha-1}e^{-\beta x}
+\end{equation}
+where
+\begin{equation}
+  \Gamma(t)=\int_0^\infty x^{t-1}e^{-x}dx.
+\end{equation}
+The CDF is
+\begin{equation}
+  F(x;\alpha,\beta)=\frac{\gamma(k,\beta x)}{\Gamma(k)}
+\end{equation}
+where $\gamma$ is the (lower) incomplete gamma function,
+\begin{equation}
+  \gamma(x;k)=\int_0^x t^{a-1}e^{-t}dt
+\end{equation}
+
+In our back pocket, from \texttt{Boost::Math}, are
+$\Gamma(x)$, $\ln(|\Gamma(x)|)$, digamma, which is
+\begin{equation}
+  \psi(x)=\frac{d}{dx}\ln(\Gamma(x))=\frac{\Gamma'(x)}{\Gamma(x)},
+\end{equation}
+gamma ratio, which is $\Gamma(a)/\Gamma(b)$,
+gamma delta ratio, which is $\Gamma(a)/\Gamma(a+\Delta)$,
+and the set of incomplete gamma functions.
+In order, they are normalized lower incomplete, normalized upper, incomplete
+full (non-normalized) lower incomplete, and full (non-normalized)
+upper incomplete gamma functions.
+\begin{eqnarray}
+  \mbox{gamma\_p}(a,z)&=&\frac{\gamma(a,z)}{\Gamma(a)}=\frac{1}{\Gamma(a)}
+     \int_0^zt^{a-1}e^{-t}dt \\
+  \mbox{gamma\_q}(a,z)&=&\frac{\Gamma(a,z)}{\Gamma(a)}=\frac{1}{\Gamma(a)}
+     \int_z^0t^{a-1}e^{-t}dt \\
+  \mbox{tgamma\_lower}(a,z)&=&\gamma(a,z)=
+     \int_0^zt^{a-1}e^{-t}dt \\
+  \mbox{tgamma}(a,z)&=&\Gamma(a,z)=\frac{1}{\Gamma(a)}
+     \int_z^0t^{a-1}e^{-t}dt \\
+\end{eqnarray}
+There are a set of inverses of incomplete gamma functions
+and derivatives of incomplete gamma functions.
+OK, back to what we need.
+
+The hazard integral, in terms of the cdf, is
+\begin{eqnarray}
+ \int_{t_1-t_e}^{t_2-t_e}\lambda(s)ds&=&-\ln(1-F(t_2-t_e))+\ln(1-F(t_1-t_e)) \\
+ &=& \ln\left[\frac{1-F(t_1-t_e)}{1-F(t_2-t_e)}\right]
+\end{eqnarray}
+
+
 
 \end{document}
