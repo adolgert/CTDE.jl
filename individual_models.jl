@@ -28,7 +28,7 @@ disease_exponential={
     's'=>2.04, # not clinical to clinical
     'i'=>4.39, # infectious to recovered
     'e'=>10, # clinical back to subclinical (unknown and less important)
-    'g'=>0.5 # rate of infection of neighbor
+    'g'=>0.26 # rate of infection of neighbor
 }
 
 disease_nonexponential={
@@ -37,7 +37,7 @@ disease_nonexponential={
     'i'=>(3.969, 1.107),
     'u'=>(5.3, 4.02),
     'e'=>1/10,
-    'g'=>1/0.5
+    'g'=>1/0.26
 }
 
 # Convert scale in days to a hazard per day.
@@ -53,11 +53,12 @@ exponential_transition_distributions={
 function run_individual_model()
     # model=individual_exponential(de_params, exponential_transition_distributions)
     # individual_graph_set(model, "Simulation from Exponential Fits to Data", run_cnt)
-    # nonexp_model=individual_nonexponential(disease_nonexponential)
-    # individual_graph_set(nonexp_model, "Simulation with Dependent Clinical Period", run_cnt)
-    indep_model=individual_independent(disease_nonexponential)
-    individual_graph_set(indep_model,
-            "Simulation with Independent Clinical Period", run_cnt)
+    nonexp_model=individual_nonexponential(disease_nonexponential)
+    print(STDOUT, nonexp_model.structure)
+    individual_graph_set(nonexp_model, "Simulation with Dependent Clinical Period", run_cnt)
+    # indep_model=individual_independent(disease_nonexponential)
+    # individual_graph_set(indep_model,
+    #         "Simulation with Independent Clinical Period", run_cnt)
 end
 
 run_individual_model()

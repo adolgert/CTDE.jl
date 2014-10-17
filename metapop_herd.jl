@@ -48,13 +48,17 @@ end
 
 function herd_model(params, individuals_per_pen, block_cnt, block_length,
         save_file, rng)
+    println("pen contact graph")
     pen_contact=pen_graph(block_cnt, block_length)
-    @time model=explicit_metapopulation(params, pen_contact)
+    println("make model")
+    model=explicit_metapopulation(params, pen_contact)
     total=length(pen_contact)*individuals_per_pen
     sampling=NextReactionHazards()
     observer=HerdDiseaseObserver(total)
-    run_steps(model, sampling, s->observe(observer, s), rng)
+    println("start run")
+    @time run_steps(model, sampling, s->observe(observer, s), rng)
     #show(observer)
+    println("save observer")
     save_observer(observer, save_file)
     #plot_observer(observer, "Metapopulation Trajectory")
     observer.cnt-1

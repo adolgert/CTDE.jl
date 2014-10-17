@@ -64,22 +64,27 @@ type HerdDiseaseObserver
     cnt::Int
     sir::TrajectoryStruct
     previous_time::Float64
-    HerdDiseaseObserver(cnt)=new(zeros(Int64, 10_000,6),
+    HerdDiseaseObserver(cnt)=new(zeros(Int64, 10_000, 6),
             fill(-1., 10_000),
             1, TrajectoryStruct(int(cnt-1), 0, 1, 0, cnt, 0, 0.), 0.)
 end
 
 function observe(eo::HerdDiseaseObserver, state)
+    #println("observe enter ", state.last_fired)
     last_fired=state.last_fired
     delta=state.current_time-eo.previous_time
     shiftstore= xo->begin
         xo.sir.t=state.current_time
-        xo.state[xo.cnt,:]=Int[xo.sir.s, xo.sir.l, xo.sir.i, xo.sir.r, xo.sir.n,
+        #println("setstate ", size(xo.state), " ", xo.cnt)
+        xo.state[xo.cnt,:]=Int64[xo.sir.s, xo.sir.l, xo.sir.i, xo.sir.r, xo.sir.n,
                 xo.sir.c]
+        #println("settime")
         xo.time[xo.cnt]=xo.sir.t
         xo.cnt+=1
     end
+    #println("about to get key")
     key=last_fired[3]
+    #println("got key")
     if key=='d'
         eo.sir.i-=1
         eo.sir.r+=1
@@ -101,16 +106,17 @@ function observe(eo::HerdDiseaseObserver, state)
         eo.sir.n+=1
         shiftstore(eo)
     end
-    if eo.cnt>length(eo.state)
+    if eo.cnt>size(eo.state)[1]
+        #println("observe resizing state")
         new_len=2*eo.cnt
-        new_t=zeros(Int64, new_len, 6)
-        new_t[1:length(eo.state)]=eo.state
+        new_t=zeros(Int64, new_len, size(eo.state)[2])
+        new_t[1:size(eo.state)[1],:]=eo.state
         eo.state=new_t
-        new_time=zeros(Time, new_len)
-        new_time[1:length(eo.time)]=eo.time
-        eo.time=new_time
+        #println("observe resizing time")
+        resize!(eo.time, new_len)
     end
     eo.previous_time=state.current_time
+    #println("observe exit")
     true # run until you can't run any more.
 end
 

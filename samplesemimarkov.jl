@@ -38,8 +38,8 @@ end
 ##################################################
 
 # A heap of these records which event comes next.
-type NRTransition
-	key
+immutable type NRTransition{K}
+	key::K
 	time::Float64
 end
 
@@ -64,16 +64,17 @@ type TransitionRecord
 end
 
 # This is the main struct.
-type NextReactionHazards
-	firing_queue::MutableBinaryHeap{NRTransition,DataStructures.LessThan}
-	transition_state::Dict{Any,TransitionRecord}
+type NextReactionHazards{K}
+	firing_queue::MutableBinaryHeap{NRTransition{K},DataStructures.LessThan}
+	transition_state::Dict{K,TransitionRecord}
 end
 
+# This constructor bakes Int64 into it as a key. Others are possible.
 function NextReactionHazards()
-	heap=mutable_binary_minheap(NRTransition)
-	@debug("SampleSemiMarkov.NextReactionHazards type ",typeof(heap))
-	state=Dict{Any,TransitionRecord}()
-	NextReactionHazards(heap, state)
+    heap=mutable_binary_minheap(NRTransition{Int64})
+    @debug("SampleSemiMarkov.NextReactionHazards type ",typeof(heap))
+    state=Dict{Int64,TransitionRecord}()
+    NextReactionHazards(heap, state)
 end
 
 function print_next_reaction_hazards(propagator::NextReactionHazards)
@@ -110,7 +111,7 @@ end
 
 # Finds the next one without removing it from the queue.
 function next(propagator::NextReactionHazards, model, rng)
-	const NotFound=NRTransition(nothing, Inf)
+	const NotFound=NRTransition(-1, Inf)
 	if !isempty(propagator.firing_queue)
 		least=top(propagator.firing_queue)
 	else
@@ -165,6 +166,7 @@ function enable(propagator::NextReactionHazards, key, distribution, now, rng)
 		record=TransitionRecord(interval, now, handle, distribution)
 		propagator.transition_state[key]=record
 	end
+    @debug("SampleSemiMarkov.enable exit")
 end
 
 # Remove a transition from the queue because it was disabled.
@@ -173,7 +175,7 @@ function disable(propagator::NextReactionHazards, key, now)
 	# We store distributions in order to calculate remaining hazard
 	# which will happen AFTER the state has changed.
 	update!(propagator.firing_queue, record.heap_handle,
-		NRTransition(key, -1))
+		NRTransition(key, -1.))
 	todelete=pop!(propagator.firing_queue)
 	@assert(todelete.key==key && todelete.time==-1)
 
@@ -195,7 +197,7 @@ function fire(propagator::NextReactionHazards, system,
 	key, when=(choice.key, choice.time)
 	record=propagator.transition_state[key]
 	update!(propagator.firing_queue, record.heap_handle,
-		NRTransition(key, -1))
+		NRTransition(key, -1.))
 	queue_length=length(propagator.firing_queue)
 	removed=pop!(propagator.firing_queue)
 	@assert removed.key==key

@@ -27,7 +27,7 @@ function kernel_model_exp()
         [("a", -1), ("a", 1)],
         [])
 
-    add_tokens(model.state.marking, "a", 1)
+    add_tokens(model, "a", 1)
 
     model
 end
@@ -54,7 +54,7 @@ function kernel_model_weib()
         [("a", -1), ("a", 1)],
         [])
 
-    add_tokens(model.state.marking, "a", 1)
+    add_tokens(model, "a", 1)
 
     model
 end
@@ -82,8 +82,8 @@ function independent_model_exp()
         [("b", -1), ("b", 1)],
         [])
 
-    add_tokens(model.state.marking, "a", 1)
-    add_tokens(model.state.marking, "b", 1)
+    add_tokens(model, "a", 1)
+    add_tokens(model, "b", 1)
 
     model
 end
@@ -111,8 +111,8 @@ function independent_model_weib()
         [("b", -1), ("b", 1)],
         [])
 
-    add_tokens(model.state.marking, "a", 1)
-    add_tokens(model.state.marking, "b", 1)
+    add_tokens(model, "a", 1)
+    add_tokens(model, "b", 1)
 
     model
 end
