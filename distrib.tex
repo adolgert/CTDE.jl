@@ -186,11 +186,11 @@ where
 \end{equation}
 The CDF is
 \begin{equation}
-  F(x;\alpha,\beta)=\frac{\gamma(k,\beta x)}{\Gamma(k)}
+  F(x;\alpha,\beta)=\frac{\gamma(\alpha,\beta x)}{\Gamma(\alpha)}
 \end{equation}
 where $\gamma$ is the (lower) incomplete gamma function,
 \begin{equation}
-  \gamma(x;k)=\int_0^x t^{a-1}e^{-t}dt
+  \gamma(x;\alpha)=\int_0^x t^{\alpha-1}e^{-t}dt
 \end{equation}
 
 In our back pocket, from \texttt{Boost::Math}, are
@@ -217,13 +217,58 @@ upper incomplete gamma functions.
 There are a set of inverses of incomplete gamma functions
 and derivatives of incomplete gamma functions.
 OK, back to what we need.
+\begin{eqnarray}
+  F(x;\alpha,\beta)&=&\mbox{gamma\_p}(\alpha, \beta x) \\
+  F^{-1}(y;\alpha,\beta)&=&\mbox{gamma\_p\_inv}(\alpha, y)/\beta
+\end{eqnarray}
 
 The hazard integral, in terms of the cdf, is
 \begin{eqnarray}
  \int_{t_1-t_e}^{t_2-t_e}\lambda(s)ds&=&-\ln(1-F(t_2-t_e))+\ln(1-F(t_1-t_e)) \\
- &=& \ln\left[\frac{1-F(t_1-t_e)}{1-F(t_2-t_e)}\right]
+ &=& \ln\left[\frac{1-F(t_1-t_e)}{1-F(t_2-t_e)}\right].
 \end{eqnarray}
+Can we simplify this into something provided?
+\begin{eqnarray}
+\int_{t_1-t_e}^{t_2-t_e}\lambda(s)ds & = & \ln\left[\frac{1-\frac{\gamma(\alpha,\beta (t_1-t_e))}{\Gamma(\alpha)}}{1-\frac{\gamma(\alpha,\beta (t_2-t_e))}{\Gamma(\alpha)}}\right] \\
+ & = & \ln\left[\frac{\Gamma(\alpha)-\gamma(\alpha,\beta (t_1-t_e))}
+ {\Gamma(\alpha)-\gamma(\alpha,\beta (t_2-t_e))} \right] \\
+\gamma(\alpha,\beta (t_1-t_e)) & = & \int_0^{\beta(t_1-t_e)} t^{\alpha-1}e^{-t}dt
+\end{eqnarray}
+It looks like we might do best just with
+\begin{lstlisting}
+Ga=tgamma(a)
+hazint(te, t1, t2)=log((Ga-tgamma_lower(a,b*(t1-te)))/
+    (Ga-tgamma_lower(a,b*(t2-te))))
+\end{lstlisting}
 
-
+Our other goal for Gamma distributions is to get the inverse hazard.
+This can be seen as two steps. First find the integral
+\begin{equation}
+  l_p=-x+\left[\int_0^{t0-t_e}\lambda(s)ds\right].
+\end{equation}
+Then solve for $t'$ in
+\begin{equation}
+  l_p=-\int_0^{t'-t_e}\lambda(s)ds.
+\end{equation}
+Or, we could write this as
+\begin{equation}
+  l_e =e^{-x}e^{-\int_0^{t0-t_e}\lambda(s)ds}=e^{-x}(1-F(t_0-t_e))
+\end{equation}
+and
+\begin{equation}
+  l_e=e^{-\int_0^{t'-t_e}\lambda(s)ds}=1-F(t'-t_e).
+\end{equation}
+All at once,
+\begin{eqnarray}
+  F(t'-t_e)&=&1-e^{-x}(1-F(t_0-t_e)) \\
+ t'&=&t_e+F^{-1}\left(1-e^{-x}(1-F(t_0-t_e))\right). \\
+ F(t_0-t_e)&=&\mbox{gamma\_p}(\alpha,\beta(t_0-t_e)) \\
+ F^{-1}(y)&=&\mbox{gamma\_p\_inv}(\alpha, y)/\beta
+\end{eqnarray}
+So here is our inverse hazard integral.
+\begin{lstlisting}
+  quad=1-exp(-x)*(1-gamma_p(a,b*(t0-te)))
+  tp=te + gamma_p_inv(a, quad)/b
+\end{lstlisting}
 
 \end{document}
