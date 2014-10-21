@@ -32,6 +32,44 @@ of states, transitions which modify the states, and rates for those
 transitions. For each variant of a model, look at which of these
 three is varied.
 
+There are a series of types of models.
+\begin{enumerate}
+  \item Individual---weight, age progression, gains
+  \item Individual Disease Pathology
+  \begin{enumerate}
+    \item Compartmental states
+    \item Hazard rates
+    \item Frailties
+  \end{enumerate}
+  \item Single Herd
+  \begin{enumerate}
+    \item Contact rate and structure
+    \begin{enumerate}
+      \item Well-mixed
+      \item Simulated from statistical model
+    \end{enumerate}
+    \item Disease progression given contact
+  \end{enumerate}
+  \item Feedlot
+  \begin{enumerate}
+    \item Pens
+    \item Hospital pens
+    \item Demographics and incoming/slaughter
+    \item Agents such as riders, wildlife, 4H clubs
+    \item Background transport, airborne or unidentified
+  \end{enumerate}
+  \item Detection
+  \begin{enumerate}
+    \item Clinical states
+    \item Conditions, meaning percent diseased before detection
+  \end{enumerate}
+  \item Intervention
+  \begin{enumerate}
+    \item Conferred immunity
+    \item Vaccination/culling team work rates
+  \end{enumerate}
+\end{enumerate}
+
 \section{Stochastic Compartmental Models in Continuous Time}
 This section explains how to define the kind of model used
 in this article. It doesn't describe how simulation is done.

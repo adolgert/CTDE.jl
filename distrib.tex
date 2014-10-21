@@ -271,4 +271,37 @@ So here is our inverse hazard integral.
   tp=te + gamma_p_inv(a, quad)/b
 \end{lstlisting}
 
+\section{Uniform Distribution}
+Maybe this one will be easier.
+This distribution has two parameters, a start time
+and an end time, $t_a$ and $t_b$.
+The pdf is constant, $f(t)=1/(t_b-t_a)$ between
+$t_a\le t<t_b$. The CDF is just the integral of
+that, $F(t)=(t-t_a)/(t_b-t_a)$.
+The integrated hazard will have nonzero cases for
+for $t_1<t_a<t_2<t_b$, $t_1<t_a<t_b<t_2$,
+$t_a<t_1<t_2<t_b$, $t_a<t_1<t_b<t_2$.
+It is zero for $t_1<t_2<t_a$ and $t_a<t_b<t_1<t_2$
+\begin{equation}
+  \int_{t_1-t_e}^{t_2-t_e}\lambda(s)ds=
+      \ln\left[\frac{1-F(t_1-t_e)}{1-F(t_2-t_e)}\right]
+\end{equation}
+If $t_a\le t_n-t_e<t_b$, then $F(t_n-t_e)=(t_n-t_e-t_a)/(t_b-t_a)$.
+Otherwise it is $0$ or $1$. It should never be the
+case that a uniform distribution does not fire
+before $t_b$. The hazard integral always sums over
+time already past in the simulation. Nevertheless, it will
+be necessary to check for overflow near $t_b$, and it
+would help to keep the two logs separated, instead of
+in the fraction.
+
+What about the inverse of the hazard integral?
+$F^{-1}(x)=t_a+(t_b-t_a)x$ Therefore, for $t_a\le t_0-t_e$,
+\begin{equation}
+  t'=t_e+t_a+(t_b-t_a)\left[1-e^{-x}\left(1-\frac{t_0-t_e-t_a}{t_b-t_a}\right)\right]
+\end{equation}
+and for $t_0-t_e< t_a$,
+\begin{equation}
+  t'=t_e+t_a+(t_b-t_a)\left[1-e^{-x}\right]
+\end{equation}
 \end{document}
