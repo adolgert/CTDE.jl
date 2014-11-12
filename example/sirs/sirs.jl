@@ -1,7 +1,6 @@
 include("tracing.jl")
 using DataFrames
 using Gadfly
-using SmoothingKernels
 push!(LOAD_PATH, "../../src")
 using SemiMarkov
 using SemiMarkov.SmallGraphs
@@ -196,5 +195,13 @@ end
 
 # This one pulls rng from scope so that it can be initialized in parallel.
 function herd_single(params::Dict, cnt::Int, obs_times::Array{Time,1})
+    global rng
     herd_single(params, cnt, obs_times, rng)
+end
+
+
+function set_rng(seed)
+    global rng
+    rng=MersenneTwister(seed+myid())
+    nothing
 end

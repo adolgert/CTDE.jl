@@ -25,7 +25,9 @@ disease_exponential={
 }
 observation_times=Time[5.0, 10.0, 15.0]
 
-@everywhere rng=MersenneTwister(seed+myid())
+for init_idx in 2:nprocs()
+    remotecall(init_idx, set_rng, seed)
+end
 
 work=Array(Any,run_cnt)
 for i in 1:run_cnt
