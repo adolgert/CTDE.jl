@@ -1,3 +1,5 @@
+# Implements a Finite State Machine, in the category theory
+# sense.
 export run_steps
 
 function run_steps(model, sampling, report, rng)

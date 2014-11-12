@@ -1,9 +1,11 @@
 include("semimarkov.jl")
+include("tracing.jl")
 using DataFrames
 using Gadfly
 using SmoothingKernels
 using SemiMarkov
 using SemiMarkov.SmallGraphs
+using category_fsm
 import SemiMarkov: enabled_transitions, current_time, current_time!
 import SemiMarkov: fire, init
 import Base: zero
@@ -152,27 +154,6 @@ function epidemic_size(eo::HerdDiseaseObserver)
     eo.t[eo.cnt-1][3]
 end
 
-function run_to_stop(model, sampling, report, rng)
-    running=true
-    init(sampling, model, rng)
-    trans=NRTransition(model.state.last_fired, current_time(model))
-    steps=0
-    while running
-        trans=next(sampling, model, rng)
-        #println(id_time)
-        if trans.time!=Inf
-            #println("fire ", id_time)
-            fire(sampling, model, trans, rng)
-            #println("marking ", model.state.marking)
-            running=report(model.state)
-        else
-            running=false
-        end
-        steps+=1
-    end
-    #println("steps ", steps, " end time ", current_time(model))
-end
-
 function complete_contact_graph(cnt)
     g=UndirectedGraph()
     for i in 1:cnt
@@ -195,7 +176,7 @@ function herd_model(params, cnt, run_cnt, obs_times, rng)
         observer=HerdDiseaseObserver(cnt, obs_times)
         model.state=TokenState(int_marking())
         initialize_marking(model, contact)
-        run_to_stop(model, sampling, s->observe(observer, s), rng)
+        run_steps(model, sampling, s->observe(observer, s), rng)
         println(observer.observations_at_times)
     end
 end
@@ -210,7 +191,7 @@ function herd_single(params::Dict, cnt::Int, obs_times::Array{Time,1},
     observer=HerdDiseaseObserver(cnt, obs_times)
     model.state=TokenState(int_marking())
     initialize_marking(model, contact)
-    run_to_stop(model, sampling, s->observe(observer, s), rng)
+    run_steps(model, sampling, s->observe(observer, s), rng)
     observer.observations_at_times
 end
 
