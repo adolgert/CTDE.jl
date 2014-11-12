@@ -5,7 +5,6 @@ using Gadfly
 using SmoothingKernels
 using SemiMarkov
 using SemiMarkov.SmallGraphs
-using category_fsm
 import SemiMarkov: enabled_transitions, current_time, current_time!
 import SemiMarkov: fire, init
 import Base: zero
@@ -61,9 +60,9 @@ function initialize_marking(model, contact)
     node_idx=1
     for (node, properties) in contact.node
         if node_idx!=first_infection
-            add_tokens(model.state.marking, (node,'s'), 1)
+            add_tokens(model, (node,'s'), 1)
         else
-            add_tokens(model.state.marking, (node,'i'), 1)
+            add_tokens(model, (node,'i'), 1)
         end
         node_idx+=1
     end

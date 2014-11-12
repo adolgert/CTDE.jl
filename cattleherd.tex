@@ -340,6 +340,20 @@ of times to infection or recovery can be quite different.
 How much this matters depends on the application, which
 here is prediction of prevalence within a herd.
 
+\subsection{$R_0$ for Nonexponential Model}
+$R_0$ is determined by the number of individuals a single
+infected will infect. How do we compute $R_0$ given non-exponential
+distributions? In this case, an individual in the
+infectious state will either recover or infect others. Infecting
+others is an exponential process with hazard $\beta S$, where
+$S$ is the number of susceptibles. How long will the individual
+remain infectious? Assume a constant rate of infection of others
+over that time, which approximates the decreasing number of
+susceptibles. Using $G(\tau)=1-F(\tau)$ as the survival,
+\begin{equation}
+  \int_0^\infty \beta S \tau G(\tau)d\tau
+\end{equation}
+
 \section{Herd Models}
 Spread of infection within a herd of cattle is complicated.
 Using a compartmental model built from the individual

@@ -4,6 +4,11 @@
 # Uncomment for HDF5. Pkg.add("HDF5")
 # using HDF5, JLD
 
+if length(ARGS)<6
+    println("Need some args. Try 50 20 4.0 1.0 0.5 34")
+    exit(1)
+end
+
 individual_cnt=int(ARGS[1])
 run_cnt=int(ARGS[2])
 beta=float(ARGS[3])
