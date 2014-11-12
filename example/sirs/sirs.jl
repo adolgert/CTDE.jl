@@ -2,7 +2,7 @@ include("tracing.jl")
 using DataFrames
 using Gadfly
 using SmoothingKernels
-push!(LOAD_PATH, "src")
+push!(LOAD_PATH, "../../src")
 using SemiMarkov
 using SemiMarkov.SmallGraphs
 import SemiMarkov: enabled_transitions, current_time, current_time!
