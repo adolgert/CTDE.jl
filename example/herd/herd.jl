@@ -1,4 +1,3 @@
-include("semimarkov.jl")
 using DataFrames
 using Gadfly
 using SmoothingKernels

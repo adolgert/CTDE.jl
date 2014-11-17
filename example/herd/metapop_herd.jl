@@ -1,3 +1,4 @@
+push!(LOAD_PATH, "../../src")
 include("herd.jl")
 include("herd_plot.jl")
 include("herd_observer.jl")
