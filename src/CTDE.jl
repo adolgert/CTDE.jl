@@ -1,4 +1,4 @@
-module SemiMarkov
+module CTDE
     using Logging
     @Logging.configure(level=INFO)
     include("smallgraph.jl")

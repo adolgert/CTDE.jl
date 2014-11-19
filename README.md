@@ -1,5 +1,5 @@
 CTDE
-====
+===========
 
 Continuous time, discrete event system in Julia
 
@@ -19,3 +19,5 @@ The code is alpha. Features include
 * Gibson and Bruck's next reaction method (via Anderson)
 
 Contact me with any questions.
+
+[![Build Status](https://travis-ci.org/adolgert/CTDE.jl.svg?branch=master)](https://travis-ci.org/adolgert/CTDE.jl)

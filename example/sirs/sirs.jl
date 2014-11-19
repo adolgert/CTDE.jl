@@ -2,10 +2,10 @@ include("tracing.jl")
 using DataFrames
 using Gadfly
 push!(LOAD_PATH, "../../src")
-using SemiMarkov
-using SemiMarkov.SmallGraphs
-import SemiMarkov: enabled_transitions, current_time, current_time!
-import SemiMarkov: fire, init
+using CTDE
+using CTDE.SmallGraphs
+import CTDE: enabled_transitions, current_time, current_time!
+import CTDE: fire, init
 import Base: zero
 
 typealias Time Float64
