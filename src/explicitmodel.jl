@@ -6,6 +6,7 @@ import Base: push!, length, pop!, get, print
 export ExplicitGSPNModel, ConstExplicitTransition
 export ExplicitGSPN, add_place, add_transition, current_time
 export sir_explicit, fire, enabled_transitions, print
+export TransitionRoute
 
 
 abstract ExplicitTransition
@@ -34,13 +35,30 @@ end
 
 
 immutable type EdgeProperty
-    stoichiometry::Int64
-    local_name::ASCIIString
+    stoichiometry::Int
+    route::Int
+    selection::Symbol
 end
+
+# Says some tokens go from this place to that one.
+# They can be modified in-between.
+# Used during specification of the transition.
+type TransitionRoute
+  from_place
+  to_place
+  stoichiometry::Int
+  selection::Symbol
+  # Whether this route can create or destroy tokens.
+  create_or_destroy::Int
+  TransitionRoute(f, t, s)=new(f, t, s, :Any, 0)
+end
+
+typealias DependencyGraph GenericAdjacencyList{Int64,Array{Int64,1},Array{Array{Int64,1},1}}
 
 type ExplicitGSPN
     # Graph with stoichiometry
     gspn::IncidenceList{Int64,Edge{Int64}}
+    dependency::DependencyGraph
     pt_to_id::Dict{Any,Int64}
     id_to_pt::Array{Any,1}
     edge_prop::Array{EdgeProperty,1}
@@ -52,7 +70,8 @@ end
 
 function ExplicitGSPN()
     gspn=inclist(Int64, is_directed=false)
-    ExplicitGSPN(gspn, Dict{Any,Int64}(),Array(Any,0),
+    dependency=adjlist(Int, is_directed=true)
+    ExplicitGSPN(gspn, dependency, Dict{Any,Int64}(),Array(Any,0),
         Array(EdgeProperty,0), Array(ConstExplicitTransition,0), -1)
 end
 
@@ -92,11 +111,12 @@ function add_place(structure::ExplicitGSPN, place)
     id=length(structure.id_to_pt)
     structure.pt_to_id[place]=id
     add_vertex!(structure.gspn, id)
+    add_vertex!(structure.dependency, id)
 end
 
 # id=transition key
 # transition=ExplicitTransition object
-# stoichiometry=iterable of (place, +-1, local name)
+# Route - See TransitionRoute type. Tokens move along routes betwen places.
 # dependencies=iterable of (place, local name)
 # The local name for stoichiometry is used in the transition.fire
 # method to find input tokens, no matter which place is hooked
@@ -104,7 +124,7 @@ end
 # The local name for dependencies is used in the transition.distribution
 # method.
 function add_transition(structure::ExplicitGSPN, transition_name, transition,
-        stoichiometry, dependencies)
+        transition_routes, dependencies)
     if structure.transition_base<0
         structure.transition_base=length(structure.id_to_pt)
     end
@@ -112,27 +132,28 @@ function add_transition(structure::ExplicitGSPN, transition_name, transition,
     id=length(structure.id_to_pt)
     structure.pt_to_id[transition_name]=id
     add_vertex!(structure.gspn, id)
+    add_vertex!(structure.dependency, id)
     push!(structure.transition_prop, transition)
 
-    entry_idx=1
-    for entry in stoichiometry
-        (place, stoichiometric_number)=entry[1:2]
-        local_name=string(entry_idx)
-        if Base.length(entry)>2
-            local_name=entry[3]
+    for (route_idx, route) in enumerate(transition_routes)
+        if route.from_place!=nothing
+            from_place_id=structure.pt_to_id[route.from_place]
+            add_edge!(structure.gspn, id, from_place_id)
+            epf=EdgeProperty(-route.stoichiometry, route_idx, :Any)
+            push!(structure.edge_prop, epf)
         end
-        place_id=structure.pt_to_id[place]
-        add_edge!(structure.gspn, id, place_id)
-        ep=EdgeProperty(stoichiometric_number, local_name)
-        push!(structure.edge_prop, ep)
-        entry_idx+=1
+        if route.to_place!=nothing
+            to_place_id=structure.pt_to_id[route.to_place]
+            add_edge!(structure.gspn, id, to_place_id)
+            ept=EdgeProperty(route.stoichiometry, route_idx, :Any)
+            push!(structure.edge_prop, ept)
+        end
     end
     # The dependency graph is a separate entity but
     # saved in the same structure with stoichiometry=0.
     for (place, local_name) in dependencies
         place_id=structure.pt_to_id[place]
-        add_edge!(structure.gspn, id, place_id)
-        push!(structure.edge_prop, EdgeProperty(0, local_name))
+        add_edge!(structure.dependency, id, place_id)
     end
 end
 
@@ -140,20 +161,15 @@ end
 function transition_places(f::Function, eg::ExplicitGSPN, transition_id::Int64)
     for edge in out_edges(transition_id, eg.gspn)
         ep=eg.edge_prop[edge_index(edge)]
-        if ep.stoichiometry!=0
-            f(target(edge, eg.gspn), ep.stoichiometry, ep.local_name)
-        end
+        f(target(edge, eg.gspn), ep.stoichiometry, ep.route)
     end
 end
 
 # Iterates over the dependency graph.
 function transition_dependencies(f::Function, eg::ExplicitGSPN, transition_id::Int64,
-        lm::Dict{ASCIIString,Any})
-    for edge in out_edges(transition_id, eg.gspn)
-        ep=eg.edge_prop[edge_index(edge)]
-        if ep.stoichiometry==0
-            f(target(edge, eg.gspn), ep.stoichiometry, ep.local_name, lm)
-        end
+        lm::Dict{Int,Any})
+    for (idx, place) in enumerate(out_neighbors(transition_id, eg.dependency))
+        f(place, idx, lm)
     end
 end
 
@@ -207,7 +223,7 @@ function stoichiometry_satisfied(model::ExplicitGSPNModel, transition_id::Int64)
     # Policy: Whether the output places must have no tokens.
     satisfied::Bool=true
     transition_places(model.structure,
-            transition_id) do place::Int64, stoich::Int64, local_name::ASCIIString
+            transition_id) do place::Int64, stoich::Int64, route::Int
         if stoich<0
             token_cnt=length(model.state.marking, place)::Int64
             @debug("stoich ", transition_id, " (", place, ", ", stoich, ", ", token_cnt, ")")
@@ -219,15 +235,30 @@ function stoichiometry_satisfied(model::ExplicitGSPNModel, transition_id::Int64)
     satisfied
 end
 
+
+# This is a way to give a transition access to its dependencies.
+type LocalMarking
+    dependency::DependencyGraph
+    transition_id::Int
+    marking
+end
+
+function get(lm::LocalMarking, index::Int)
+    lm.marking[out_neighbors(lm.transition_id, lm.dependency)[index]]
+end
+
+length(lm::LocalMarking)=length(out_neighbors(lm.transition_id, lm.dependency))
+
+
 # The correct enabling time to send is the current time if we are asking whether
 # this transition is newly-enabled. If we are just getting the distribution of
 # an enabled transition, then send its already-known enabling time.
 function transition_distribution(model::ExplicitGSPNModel, transition_id, enabling)
-    local_marking=Dict{ASCIIString,Any}()
-    transition_dependencies(model.structure, transition_id, local_marking) do place, stoich, name, lm
+    local_marking=Dict{Int,Any}()
+    transition_dependencies(model.structure, transition_id, local_marking) do place, route, lm
         #@debug("trans ",place," prop ",edge_properties)
         mp=model.state.marking[place]
-        lm[name]=mp
+        lm[route]=mp
     end
     transition=transitionobj(model.structure, transition_id)
     dist, invariant=distribution(transition, local_marking, enabling)
@@ -304,29 +335,30 @@ end
 
 function transition_action(model::ExplicitGSPNModel, transition_id)
     affected_places=Set{Int64}()
-    tokens=Dict{ASCIIString,Any}() # Map from the edge to the tokens at a place on the edge.
-    transition_places(model.structure, transition_id) do place, stoich, name
+    tokens=Dict{Int,Any}() # Map from the edge to the tokens at a place on the edge.
+    seen_routes=Set{Int}()
+    transition_places(model.structure, transition_id) do place, stoich, route
         if stoich<0
-            tokens[name]=empty_container(model.state.marking)
-            take!(model.state.marking, place, tokens[name],
+            tokens[route]=empty_container(model.state.marking)
+            take!(model.state.marking, place, tokens[route],
                     -stoich)
             push!(affected_places, place)
+            push!(seen_routes, route)
+        # If a route has no from_place, we still need to give it a spot.
+        elseif (stoich>0) && !(route in seen_routes)
+            tokens[route]=empty_container(model.state.marking)
         end
     end
     
     @debug("SimpleEGSPN.fire in-tokens ", tokens)
     fire_function=transitionobj(model.structure, transition_id).fire
     fire_function(tokens)
+
     @debug("SimpleEGSPN.fire out-tokens ", tokens)
-    all_tokens=empty_container(model.state.marking)
-    for (x,y) in tokens
-        move!(y, all_tokens, length(y))
-    end
-    @debug("SimpleEGSPN.fire all-tokens ", all_tokens)
-    transition_places(model.structure, transition_id) do place, stoich, name
+    transition_places(model.structure, transition_id) do place, stoich, route
         if stoich>0
             # Tokens can be created here.
-            fill!(model.state.marking, place, all_tokens, stoich)
+            fill!(model.state.marking, place, tokens[route], stoich)
             push!(affected_places, place)
         end
     end

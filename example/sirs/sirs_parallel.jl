@@ -26,6 +26,7 @@ disease_exponential={
 observation_times=Time[5.0, 10.0, 15.0]
 
 for init_idx in 2:nprocs()
+    println("Setting seed for $init_idx")
     remotecall(init_idx, set_rng, seed)
 end
 

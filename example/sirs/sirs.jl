@@ -33,10 +33,10 @@ function individual_exponential_graph(params, contact::UndirectedGraph)
                 (TransitionExponential(params['w'], when), Int[])
             end)
         add_transition(structure, (i, i, 'd'), recover,
-            [((i,'i'), -1), ((i,'r'), 1)],
+            [TransitionRoute( (i,'i'), (i,'r'), 1),],
             [])
         add_transition(structure, (i, i, 'w'), wane,
-            [((i,'r'), -1), ((i,'s'), 1)],
+            [TransitionRoute( (i,'r'), (i,'s'), 1),],
             [])
     end
 
@@ -47,7 +47,8 @@ function individual_exponential_graph(params, contact::UndirectedGraph)
                 end)
             (i, j)=(source, target)
             add_transition(structure, (i, j,'g'), infect,
-                [((i,'i'),-1), ((j,'s'), -1), ((i,'i'),1), ((j,'i'),1)],
+                [TransitionRoute((i,'i'), (i,'i'), 1),
+                 TransitionRoute((j,'s'), (j,'i'), 1)],
                 [])
         end
     end
@@ -202,6 +203,8 @@ end
 
 function set_rng(seed)
     global rng
-    rng=MersenneTwister(seed+myid())
+    myseed=seed+myid()
+    rng=MersenneTwister(myseed)
+    println("Set rng seed to $myseed")
     nothing
 end
