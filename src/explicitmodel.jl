@@ -25,12 +25,12 @@ ConstExplicitTransition(dist)=ConstExplicitTransition(dist, (x...)->x)
 # upon which this transition depends.
 # Call through method in case a transition saves state.
 # A coalesced transition would need internal state.
-function distribution(et::ExplicitTransition, local_marking, when)
-    et.distribution(local_marking, when)
+function distribution(et::ExplicitTransition, local_marking, user, when)
+    et.distribution(local_marking, user, when)
 end
 
-function fire(et::ExplicitTransition, tokendict)
-    et.fire(tokendict)
+function fire(et::ExplicitTransition, tokendict, user)
+    et.fire(tokendict, user)
 end
 
 
@@ -112,6 +112,14 @@ function add_place(structure::ExplicitGSPN, place)
     structure.pt_to_id[place]=id
     add_vertex!(structure.gspn, id)
     add_vertex!(structure.dependency, id)
+end
+
+function place_to_key(structure::ExplicitGSPN, place)
+    structure.pt_to_id[place]
+end
+
+function key_to_place(structure::ExplicitGSPN, id::Int)
+    structure.id_to_pt[id]
 end
 
 # id=transition key

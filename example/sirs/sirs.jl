@@ -23,11 +23,11 @@ function individual_exponential_graph(params, contact::UndirectedGraph)
     for (node, properties) in contact.node
         i=node
         recover=ConstExplicitTransition(
-            (lm, when::Time)->begin
+            (lm, user, when::Time)->begin
                 (TransitionExponential(params['r'], when), Int[])
             end)
         wane=ConstExplicitTransition(
-            (lm, when::Time)->begin
+            (lm, user, when::Time)->begin
                 (TransitionExponential(params['w'], when), Int[])
             end)
         add_transition(structure, (i, i, 'd'), recover,
@@ -40,7 +40,7 @@ function individual_exponential_graph(params, contact::UndirectedGraph)
 
     for (source, targets) in contact.edge
         for (target, properties) in targets
-            infect=ConstExplicitTransition((lm, when::Time)->begin
+            infect=ConstExplicitTransition((lm, user, when::Time)->begin
                 (TransitionExponential(params['i'], when), Int[])
                 end)
             (i, j)=(source, target)
@@ -181,7 +181,7 @@ end
 
 function herd_single(params::Dict, structure, contact, cnt::Int,
         obs_times::Array{Time,1}, rng::MersenneTwister)
-    state=TokenState(int_marking())
+    state=TokenState(int_marking(), params)
     model=GSPNModel(structure, state)
 
     sampling=NextReactionHazards()

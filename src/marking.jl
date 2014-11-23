@@ -170,8 +170,9 @@ type EnablingRecord
 end
 
 # The state of the system.
-type TokenState{M}
+type TokenState{M,U}
     marking::M # Marking, by place.
+    user::U
     enabling::Dict{Int64,EnablingRecord} # Enabling time, by transition id.
     current_time::Float64 # Current system time.
     # The last transition fired is part of the state only during
@@ -181,8 +182,8 @@ type TokenState{M}
     last_fired::Any
 end
 
-function TokenState(marking)
-    TokenState(marking, Dict{Int64,EnablingRecord}(), 0.0, nothing)
+function TokenState(marking, user)
+    TokenState(marking, user, Dict{Int64,EnablingRecord}(), 0.0, nothing)
 end
 
 function marked_enabled(state::TokenState, transition)

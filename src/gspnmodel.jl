@@ -21,7 +21,7 @@ end
 # This exists to translate between user-defined place names
 # and the internal place names. It is a facade.
 function add_tokens(model::GSPNModel, place::Any, n::Int64)
-    place_id=model.structure.pt_to_id[place]
+    place_id=place_to_key(model.structure, place)
     add_tokens(model.state.marking, place_id, n)
 end
 
@@ -65,7 +65,8 @@ function transition_distribution(model::GSPNModel, transition_id, enabling)
     local_marking=LocalMarking(model.structure, transition_id,
         model.state.marking)
     transition=transitionobj(model.structure, transition_id)
-    dist, invariant=distribution(transition, local_marking, enabling)
+    dist, invariant=distribution(transition, local_marking,
+        model.state.user, enabling)
 end
 
 function examine_transition(model::GSPNModel, transition_id,
@@ -129,7 +130,8 @@ function enabled_transitions(report::Function, model::GSPNModel)
     for (id, enabling) in model.state.enabling
         # This isn't asking who becomes enabled but who is already enabled.
         # So use the already-given enabling time.
-        distribution, invariant=transition_distribution(model, id, enabling.time)
+        distribution, invariant=transition_distribution(model, id,
+                enabling.time)
         @assert(distribution!=nothing)
         report(id, distribution, current_time(model))
     end
@@ -155,7 +157,8 @@ function transition_action(model::GSPNModel, transition_id)
     end
     
     @debug("SimpleEGSPN.fire in-tokens ", tokens)
-    fire(transitionobj(model.structure, transition_id), tokens)
+    fire(transitionobj(model.structure, transition_id), tokens,
+        model.state.user)
     # fire_function=transitionobj(model.structure, transition_id).fire
     # fire_function(tokens)
 
@@ -179,7 +182,7 @@ function fire(model::GSPNModel, id_time::NRTransition,
     affected_places=transition_action(model, transition_id)
 
     mark_disabled!(model.state, transition_id)
-    model.state.last_fired=model.structure.id_to_pt[transition_id]
+    model.state.last_fired=key_to_place(model.structure, transition_id)
     current_time!(model, id_time.time)
 
     examine_transitions=dependent_transitions(model.structure, affected_places)
