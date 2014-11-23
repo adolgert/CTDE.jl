@@ -237,6 +237,7 @@ end
 
 
 # This is a way to give a transition access to its dependencies.
+# We don't copy them somewhere, just access them when they are called.
 type LocalMarking
     dependency::DependencyGraph
     transition_id::Int
@@ -254,12 +255,8 @@ length(lm::LocalMarking)=length(out_neighbors(lm.transition_id, lm.dependency))
 # this transition is newly-enabled. If we are just getting the distribution of
 # an enabled transition, then send its already-known enabling time.
 function transition_distribution(model::ExplicitGSPNModel, transition_id, enabling)
-    local_marking=Dict{Int,Any}()
-    transition_dependencies(model.structure, transition_id, local_marking) do place, route, lm
-        #@debug("trans ",place," prop ",edge_properties)
-        mp=model.state.marking[place]
-        lm[route]=mp
-    end
+    local_marking=LocalMarking(model.structure.dependency, transition_id,
+        model.state.marking)
     transition=transitionobj(model.structure, transition_id)
     dist, invariant=distribution(transition, local_marking, enabling)
 end
@@ -351,8 +348,9 @@ function transition_action(model::ExplicitGSPNModel, transition_id)
     end
     
     @debug("SimpleEGSPN.fire in-tokens ", tokens)
-    fire_function=transitionobj(model.structure, transition_id).fire
-    fire_function(tokens)
+    fire(transitionobj(model.structure, transition_id), tokens)
+    # fire_function=transitionobj(model.structure, transition_id).fire
+    # fire_function(tokens)
 
     @debug("SimpleEGSPN.fire out-tokens ", tokens)
     transition_places(model.structure, transition_id) do place, stoich, route
