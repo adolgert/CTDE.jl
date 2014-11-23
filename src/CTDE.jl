@@ -5,6 +5,7 @@ module CTDE
     include("samplesemimarkov.jl")
     include("marking.jl")
     include("explicitmodel.jl")
+    include("gspnmodel.jl")
     include("transitiondistributions.jl")
     include("category_fsm.jl")
 end
