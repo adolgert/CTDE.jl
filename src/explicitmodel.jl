@@ -3,7 +3,7 @@ using Distributions
 using Graphs
 
 import Base: push!, length, pop!, get, print
-export ExplicitGSPNModel, ConstExplicitTransition
+export GSPNModel, ConstExplicitTransition
 export ExplicitGSPN, add_place, add_transition, current_time
 export sir_explicit, fire, enabled_transitions, print
 export TransitionRoute

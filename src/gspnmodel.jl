@@ -3,25 +3,16 @@ abstract Model
 
 # A model has both state and structure.
 # This is what is presented to the propagator.
-type ExplicitGSPNModel{T} <: Model
-    structure::ExplicitGSPN
-    state::T
+type GSPNModel{T,S} <: Model
+    structure::T
+    state::S
 end
 
-function ExplicitGSPNModel(state)
-    ExplicitGSPNModel(ExplicitGSPN(), state)
-end
-
-
-function ExplicitGSPNModel()
-    ExplicitGSPNModel(ExplicitGSPN(), nothing)
-end
-
-function current_time(model::ExplicitGSPNModel)
+function current_time(model::GSPNModel)
     model.state.current_time
 end
 
-function current_time!(model::ExplicitGSPNModel, when::Float64)
+function current_time!(model::GSPNModel, when::Float64)
     @debug("ExplicitModel.current_time! was ",
         model.state.current_time, " is ", when)
     model.state.current_time=when
@@ -29,12 +20,12 @@ end
 
 # This exists to translate between user-defined place names
 # and the internal place names. It is a facade.
-function add_tokens(model::ExplicitGSPNModel, place::Any, n::Int64)
+function add_tokens(model::GSPNModel, place::Any, n::Int64)
     place_id=model.structure.pt_to_id[place]
     add_tokens(model.state.marking, place_id, n)
 end
 
-function stoichiometry_satisfied(model::ExplicitGSPNModel, transition_id::Int64)
+function stoichiometry_satisfied(model::GSPNModel, transition_id::Int64)
     #@debug("stoichiometry_satisfied enter ", transition_id)
     # Policy: Whether the output places must have no tokens.
     satisfied::Bool=true
@@ -70,14 +61,14 @@ length(lm::LocalMarking)=transition_dependency_length(lm.gspnd, lm.transition_id
 # The correct enabling time to send is the current time if we are asking whether
 # this transition is newly-enabled. If we are just getting the distribution of
 # an enabled transition, then send its already-known enabling time.
-function transition_distribution(model::ExplicitGSPNModel, transition_id, enabling)
+function transition_distribution(model::GSPNModel, transition_id, enabling)
     local_marking=LocalMarking(model.structure, transition_id,
         model.state.marking)
     transition=transitionobj(model.structure, transition_id)
     dist, invariant=distribution(transition, local_marking, enabling)
 end
 
-function examine_transition(model::ExplicitGSPNModel, transition_id,
+function examine_transition(model::GSPNModel, transition_id,
         enable::Function, disable::Function)
     #@debug("examine_transition enter ", transition_id)
     stoichiometrically_allowed=stoichiometry_satisfied(model, transition_id)
@@ -123,10 +114,10 @@ function examine_transition(model::ExplicitGSPNModel, transition_id,
     #@debug("examine_transition exit")
 end
 
-init(model::ExplicitGSPNModel)=enable_transitions(model)
+init(model::GSPNModel)=enable_transitions(model)
 
 # Enables transitions consistent with the current marking.
-function enable_transitions(model::ExplicitGSPNModel)
+function enable_transitions(model::GSPNModel)
     for transition_id in transitionids(model.structure)
         examine_transition(model, transition_id, (x...)->nothing, (x...)->nothing)
     end
@@ -134,7 +125,7 @@ function enable_transitions(model::ExplicitGSPNModel)
 end
 
 
-function enabled_transitions(report::Function, model::ExplicitGSPNModel)
+function enabled_transitions(report::Function, model::GSPNModel)
     for (id, enabling) in model.state.enabling
         # This isn't asking who becomes enabled but who is already enabled.
         # So use the already-given enabling time.
@@ -146,7 +137,7 @@ function enabled_transitions(report::Function, model::ExplicitGSPNModel)
 end
 
 
-function transition_action(model::ExplicitGSPNModel, transition_id)
+function transition_action(model::GSPNModel, transition_id)
     affected_places=Set{Int64}()
     tokens=Dict{Int,Any}() # Map from the edge to the tokens at a place on the edge.
     seen_routes=Set{Int}()
@@ -180,9 +171,9 @@ function transition_action(model::ExplicitGSPNModel, transition_id)
     affected_places
 end
 
-function fire(model::ExplicitGSPNModel, id_time::NRTransition,
+function fire(model::GSPNModel, id_time::NRTransition,
         enable::Function, disable::Function, rng)
-    @debug("ExplicitGSPNModel.fire enter ", model.state.last_fired, " idt ",
+    @debug("GSPNModel.fire enter ", model.state.last_fired, " idt ",
             id_time)
     transition_id=id_time.key
     affected_places=transition_action(model, transition_id)
@@ -192,13 +183,13 @@ function fire(model::ExplicitGSPNModel, id_time::NRTransition,
     current_time!(model, id_time.time)
 
     examine_transitions=dependent_transitions(model.structure, affected_places)
-    # @debug("ExplicitGSPNModel.fire affected ", affected_places,
+    # @debug("GSPNModel.fire affected ", affected_places,
     #         " exam_trans ", examine_transitions)
     for t in examine_transitions
         examine_transition(model, t, enable, disable)
     end
 end
 
-function fire(model::ExplicitGSPNModel, id_time::NRTransition, rng)
+function fire(model::GSPNModel, id_time::NRTransition, rng)
     fire(model, id_time, (x...)->nothing, (x...)->nothing, rng)
 end

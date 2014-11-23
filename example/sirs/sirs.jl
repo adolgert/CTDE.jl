@@ -11,10 +11,8 @@ import Base: zero
 typealias Time Float64
 
 function individual_exponential_graph(params, contact::UndirectedGraph)
-    state=TokenState(int_marking())
-    model=ExplicitGSPNModel(state)
     cnt=length(contact)
-    structure=model.structure
+    structure=ExplicitGSPN()
     for i in 1:cnt
         add_place(structure, (i,'s')) # susceptible
         add_place(structure, (i,'i')) # infectious
@@ -52,7 +50,7 @@ function individual_exponential_graph(params, contact::UndirectedGraph)
                 [])
         end
     end
-    model
+    structure
 end
 
 function initialize_marking(model, contact)
@@ -181,23 +179,31 @@ function herd_model(params, cnt, run_cnt, obs_times, rng)
 end
 
 
-function herd_single(params::Dict, cnt::Int, obs_times::Array{Time,1},
-        rng::MersenneTwister)
-    contact=complete_contact_graph(cnt)
-    model=individual_exponential_graph(params, contact)
+function herd_single(params::Dict, structure, contact, cnt::Int,
+        obs_times::Array{Time,1}, rng::MersenneTwister)
+    state=TokenState(int_marking())
+    model=GSPNModel(structure, state)
 
     sampling=NextReactionHazards()
     observer=HerdDiseaseObserver(cnt, obs_times)
-    model.state=TokenState(int_marking())
     initialize_marking(model, contact)
     run_steps(model, sampling, s->observe(observer, s), rng)
     observer.observations_at_times
 end
 
+rng=nothing
+structure=nothing
+
 # This one pulls rng from scope so that it can be initialized in parallel.
 function herd_single(params::Dict, cnt::Int, obs_times::Array{Time,1})
     global rng
-    herd_single(params, cnt, obs_times, rng)
+    global structure
+    contact=complete_contact_graph(cnt)
+    if structure==nothing
+        println("making structure")
+        structure=individual_exponential_graph(params, contact)
+    end
+    herd_single(params, structure, contact, cnt, obs_times, rng)
 end
 
 
