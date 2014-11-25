@@ -134,11 +134,4 @@ function target(edge, g::AdjacencyList)
     getindex(getindex(g.vertices, edge[1]), edge[2]).v
 end
 
-adj=AdjacencyList(ArrayContainer, DequeContainer, Int, Float64, "my graph")
-v1=add_vertex!(24, adj)
-v2=add_vertex!(25, adj)
-e1=add_edge!(v1, v2, 3.7, adj)
-println(e1)
-
-
-end
+end # Module

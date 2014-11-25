@@ -8,4 +8,5 @@ module CTDE
     include("gspnmodel.jl")
     include("transitiondistributions.jl")
     include("category_fsm.jl")
+    include("AdjacencyListGraph.jl")
 end

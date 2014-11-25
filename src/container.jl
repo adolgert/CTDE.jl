@@ -1,6 +1,8 @@
 using DataStructures
 
 import Base: length, setindex!, getindex, append!
+export length, setindex!, getindex, append!, iter
+export ArrayContainer, DequeContainer, SetContainer, DictContainer
 
 # This is a set of abstractions over common containers designed to
 # let us treat some value as a key that leads to the member in the
