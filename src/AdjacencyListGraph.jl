@@ -18,14 +18,14 @@ export start, done, next, isequal
 abstract AbstractAdjacencyList{VP,EP,GP}
 
 immutable type AdjacencyListNeighbor{ALV,EP}
-    v::ALV
+    n::ALV
     edge_property::EP
 end
 
 # A Set container should contain one of each vertex, even if properties
 # are specified differently.
 function isequal(a::AdjacencyListNeighbor, b::AdjacencyListNeighbor)
-    isequal(a.v, b.v)
+    isequal(a.n, b.n)
 end
 
 
@@ -109,30 +109,40 @@ function add_vertex!{VP,EP,GP,VC,NC}(k, vp::VP, g::AdjacencyList{VP,EP,GP,VC,NC}
 end
 
 
+source(edge, g::AdjacencyList)=edge[1]
+function target(edge, g::AdjacencyList)
+    edge[2].n
+end
+
+# An edge is a tuple of the vertex_descriptor of the source
+# and the vertex value of the target.
+function edge(u, v, g::AdjacencyList)
+    (u, container_get(container_get(g.vertices, u).v, v) )
+end
+
 function add_edge!{VP,EP,GP,VC,NC}(u, v, ep::EP, g::AdjacencyList{VP,EP,GP,VC,NC})
     uvertex=container_get(g.vertices, u)
-    right=container_push(uvertex.v, make_neighbor(v, ep, g))
+    n=make_neighbor(v, ep, g)
+    right=container_push(uvertex.v, n)
     if !g.is_directed
         vvertex=container_get(g.vertices, v)
         left=container_push(vvertex.v, make_neighbor(u, ep, g))
     end
-    (u, right) # This is the edge descriptor.
+    (u, n) # This is the edge descriptor.
 end
 
 # For when edges are in a dict. k is the key to the edge.
 function add_edge!{VP,EP,GP,VC,NC}(u, v, k, ep::EP, g::AdjacencyList{VP,EP,GP,VC,NC})
     uvertex=container_get(g.vertices, u)
-    right=container_push(uvertex.v, k, make_neighbor(v, ep, g))
-    (u, right) # This is the edge descriptor.
+    n=make_neighbor(v, ep, g)
+    right=container_push(uvertex.v, k, n)
+    (u, n) # This is the edge descriptor.
 end
 
 
 graph_property(g::AdjacencyList)=g.gp
 vertex_property(vertex_descriptor, g::AdjacencyList)=g.vertices[vertex_descriptor].vp
-function edge_property(edge_descriptor, g::AdjacencyList)
-    container_get(container_get(g.vertices, source(edge_descriptor)).v,
-        edge_descriptor[2]).ep
-end
+edge_property(edge_descriptor, g::AdjacencyList)=edge_descriptor[2].ep
 
 num_vertices(g::AdjacencyList)=length(g.vertices)
 
@@ -143,9 +153,9 @@ function num_edges{V,E}(g::AdjacencyList{V,E})
 end
 
 # Needs types
-type OutEdgeNeighborIter
-    neighbor_iter
-    source
+type OutEdgeNeighborIter{N,S}
+    neighbor_iter::N
+    source::S
 end
 
 start(iter::OutEdgeNeighborIter)=start(iter.neighbor_iter)
@@ -156,7 +166,8 @@ function next(iter::OutEdgeNeighborIter, state)
 end
 
 function out_edges(vertex_descriptor, g::AdjacencyList)
-    OutEdgeNeighborIter(g.vertices[vertex_descriptor].v, vertex_descriptor)
+    OutEdgeNeighborIter(container_value_iter(g.vertices[vertex_descriptor].v),
+        vertex_descriptor)
 end
 
 
@@ -164,24 +175,20 @@ out_degree(vertex_descriptor, g::AdjacencyList)=
         length(g.vertices[vertex_descriptor].v)
 
 
-type AdjacencyListNeighborIter
-    inner
-    v
-    AdjacencyListNeighborIter(v)=new(iter(v), v)
+type AdjacencyListNeighborIter{I,V}
+    inner::I
+    v::V
+    AdjacencyListNeighborIter(v)=new(container_iter(v), v)
 end
 
 start(iter::AdjacencyListNeighborIter)=start(iter.inner)
 function next(iter::AdjacencyListNeighborIter, idx)
-    container_get(v, next(iter.inner, idx)).v
+    container_get(v, next(iter.inner, idx)).n
 end
 done(iter::AdjacencyListNeighborIter, idx)=done(iter.inner, idx)
 
 out_neighbors(vertex_descriptor, g::AdjacencyList)=
     AdjacencyListNeighborIter(g.vertices[vertex_descriptor].v)
 
-source(edge, g::AdjacencyList)=edge[1]
-function target(edge, g::AdjacencyList)
-    container_get(container_get(g.vertices, edge[1]), edge[2]).v
-end
 
 end # Module
