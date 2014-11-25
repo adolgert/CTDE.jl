@@ -3,6 +3,17 @@ using DataStructures
 
 include("container.jl")
 
+import Base: start, done, next, isequal
+export AbstractAdjacencyList
+# Export the neighbor and vertex because the types are in 
+# vertex_descriptor's type sometimes.
+export AdjacencyList, AdjacencyListNeighbor, AdjacencyListVertex
+export add_vertex!, add_edge!
+export graph_property, vertex_property, edge_property
+export num_vertices, vertices, num_edges, out_edges
+export out_degree, out_neighbors, source, target
+export start, done, next, isequal
+
 
 abstract AbstractAdjacencyList{VP,EP,GP}
 
@@ -22,7 +33,7 @@ end
 # of containers. It is dirty pool.
 store_construct(x::TypeVar, args...)=x
 function store_construct(NC::DataType, VC, EP, self)
-    alv=key_type(VC{self})
+    alv=container_key(VC{self})
     NC{AdjacencyListNeighbor{alv,EP}}
 end
 
@@ -31,7 +42,8 @@ immutable type AdjacencyListVertex{VP,EP,VC,NC}
     v::store_construct(NC, VC, EP, AdjacencyListVertex{VP,EP,VC,NC})
     vertex_property::VP
     AdjacencyListVertex(vp::VP)=new(
-        store_construct(NC, VC, EP, AdjacencyListVertex{VP,EP,VC,NC})(),
+        container_construct(store_construct(
+            NC, VC, EP, AdjacencyListVertex{VP,EP,VC,NC})),
         vp)
 end
 
@@ -46,47 +58,50 @@ type AdjacencyList{VP,EP,GP,VC,NC} <: AbstractAdjacencyList{VP,EP,GP}
     is_directed::Bool
     graph_property::GP
     AdjacencyList(directed::Bool, gp::GP)=new(
-        cconstruct(VC, AdjacencyListVertex{VP,EP,VC,NC})(),
+        container_construct(cconstruct(
+            VC, AdjacencyListVertex{VP,EP,VC,NC})),
         directed,
         gp
         )
 end
 
 
-function AdjacencyList{GP}(VC::DataType,NC::DataType,VP::DataType,
+function AdjacencyList{GP}(VC::Union(DataType,TypeConstructor),  
+        NC::Union(DataType,TypeConstructor), VP::DataType,
         EP::DataType, gp::GP)
     AdjacencyList{VP,EP,GP,VC,NC}(false, gp)
 end
 
 
 function make_neighbor{VP,EP,GP,VC,NC}(v, ep, g::AdjacencyList{VP,EP,GP,VC,NC})
-    value_type(store_construct(NC, VC, EP, AdjacencyListVertex{VP,EP,VC,NC}))(
+    container_value(store_construct(
+        NC, VC, EP, AdjacencyListVertex{VP,EP,VC,NC}))(
         v, ep)
 end
 
 
 function add_vertex!{VP,EP,GP,VC,NC}(vp::VP, g::AdjacencyList{VP,EP,GP,VC,NC})
     vertex=AdjacencyListVertex(VC, NC, EP, vp)
-    append!(g.vertices, vertex)
+    container_push(g.vertices, vertex)
 end
 
 
 function add_edge!{VP,EP,GP,VC,NC}(u, v, ep::EP, g::AdjacencyList{VP,EP,GP,VC,NC})
-    uvertex=getindex(g.vertices, u)
-    right=append!(uvertex.v, make_neighbor(v, ep, g))
+    uvertex=container_get(g.vertices, u)
+    right=container_push(uvertex.v, make_neighbor(v, ep, g))
     (u, right) # This is the edge descriptor.
 end
 
 graph_property(g::AdjacencyList)=g.gp
 vertex_property(vertex_descriptor, g::AdjacencyList)=g.vertices[vertex_descriptor].vp
 function edge_property(edge_descriptor, g::AdjacencyList)
-    getindex(getindex(g.vertices, source(edge_descriptor)).v,
+    container_get(container_get(g.vertices, source(edge_descriptor)).v,
         edge_descriptor[2]).ep
 end
 
 num_vertices(g::AdjacencyList)=length(g.vertices)
 
-vertices(g::AdjacencyList)=iter(g.vertices)
+vertices(g::AdjacencyList)=container_iter(g.vertices)
 
 function num_edges{V,E}(g::AdjacencyList{V,E})
     sum([length(x.v) for v in g.vertices])
@@ -122,7 +137,7 @@ end
 
 start(iter::AdjacencyListNeighborIter)=start(iter.inner)
 function next(iter::AdjacencyListNeighborIter, idx)
-    getindex(v, next(iter.inner, idx)).v
+    container_get(v, next(iter.inner, idx)).v
 end
 done(iter::AdjacencyListNeighborIter, idx)=done(iter.inner, idx)
 
@@ -131,7 +146,7 @@ out_neighbors(vertex_descriptor, g::AdjacencyList)=
 
 source(edge, g::AdjacencyList)=edge[1]
 function target(edge, g::AdjacencyList)
-    getindex(getindex(g.vertices, edge[1]), edge[2]).v
+    container_get(container_get(g.vertices, edge[1]), edge[2]).v
 end
 
 end # Module
