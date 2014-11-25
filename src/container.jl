@@ -37,7 +37,7 @@ container_key{K,V}(::Type{Dict{K,V}})=K
 container_value{K,V}(::Type{Dict{K,V}})=V
 container_construct{K,V}(::Type{Dict{K,V}})=Dict{K,V}()
 container_push{K,V}(c::Dict{K,V}, k::K, v::V)=begin c[k]=v; k end
-container_get{K,V}(c::Dict{K,V}, k::Int)=c[k]
-container_set{K,V}(c::Dict{K,V}, k::Int, v::V)=begin c[k]=v; k end
+container_get{K,V}(c::Dict{K,V}, k::K)=c[k]
+container_set{K,V}(c::Dict{K,V}, k::K, v::V)=begin c[k]=v; k end
 container_iter{K,V}(c::Dict{K,V})=keys(c)
 

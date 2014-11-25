@@ -73,10 +73,27 @@ function AdjacencyList{GP}(VC::Union(DataType,TypeConstructor),
 end
 
 
+function AdjacencyList{GP}(VC::Union(DataType,TypeConstructor),  
+        NC::Union(DataType,TypeConstructor), VP::DataType,
+        EP::DataType, gp::GP, capacity::Int)
+    adj=AdjacencyList{VP,EP,GP,VC,NC}(false, gp)
+    for i in 1:capacity
+        add_vertex!(adj)
+    end
+    adj
+end
+
+
 function make_neighbor{VP,EP,GP,VC,NC}(v, ep, g::AdjacencyList{VP,EP,GP,VC,NC})
     container_value(store_construct(
         NC, VC, EP, AdjacencyListVertex{VP,EP,VC,NC}))(
         v, ep)
+end
+
+
+function add_vertex!{VP,EP,GP,VC,NC}(g::AdjacencyList{VP,EP,GP,VC,NC})
+    vertex=AdjacencyListVertex(VC, NC, EP, VP())
+    container_push(g.vertices, vertex)
 end
 
 
@@ -85,12 +102,26 @@ function add_vertex!{VP,EP,GP,VC,NC}(vp::VP, g::AdjacencyList{VP,EP,GP,VC,NC})
     container_push(g.vertices, vertex)
 end
 
+# For when vertices are in a dict. k is the key.
+function add_vertex!{VP,EP,GP,VC,NC}(k, vp::VP, g::AdjacencyList{VP,EP,GP,VC,NC})
+    vertex=AdjacencyListVertex(VC, NC, EP, vp)
+    container_push(g.vertices, k, vertex)
+end
+
 
 function add_edge!{VP,EP,GP,VC,NC}(u, v, ep::EP, g::AdjacencyList{VP,EP,GP,VC,NC})
     uvertex=container_get(g.vertices, u)
     right=container_push(uvertex.v, make_neighbor(v, ep, g))
     (u, right) # This is the edge descriptor.
 end
+
+# For when edges are in a dict.
+function add_edge!{VP,EP,GP,VC,NC}(u, v, k, ep::EP, g::AdjacencyList{VP,EP,GP,VC,NC})
+    uvertex=container_get(g.vertices, u)
+    right=container_push(uvertex.v, k, make_neighbor(v, ep, g))
+    (u, right) # This is the edge descriptor.
+end
+
 
 graph_property(g::AdjacencyList)=g.gp
 vertex_property(vertex_descriptor, g::AdjacencyList)=g.vertices[vertex_descriptor].vp
