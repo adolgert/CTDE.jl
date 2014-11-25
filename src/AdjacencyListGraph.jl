@@ -67,8 +67,8 @@ end
 
 
 function AdjacencyList{GP}(VC::Union(DataType,TypeConstructor),  
-        NC::Union(DataType,TypeConstructor), VP::DataType,
-        EP::DataType, gp::GP)
+        NC::Union(DataType,TypeConstructor), VP::Union(DataType,()),
+        EP::Union(DataType,()), gp::GP)
     AdjacencyList{VP,EP,GP,VC,NC}(false, gp)
 end
 
@@ -112,10 +112,14 @@ end
 function add_edge!{VP,EP,GP,VC,NC}(u, v, ep::EP, g::AdjacencyList{VP,EP,GP,VC,NC})
     uvertex=container_get(g.vertices, u)
     right=container_push(uvertex.v, make_neighbor(v, ep, g))
+    if !g.is_directed
+        vvertex=container_get(g.vertices, v)
+        left=container_push(vvertex.v, make_neighbor(u, ep, g))
+    end
     (u, right) # This is the edge descriptor.
 end
 
-# For when edges are in a dict.
+# For when edges are in a dict. k is the key to the edge.
 function add_edge!{VP,EP,GP,VC,NC}(u, v, k, ep::EP, g::AdjacencyList{VP,EP,GP,VC,NC})
     uvertex=container_get(g.vertices, u)
     right=container_push(uvertex.v, k, make_neighbor(v, ep, g))

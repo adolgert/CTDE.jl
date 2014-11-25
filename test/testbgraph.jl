@@ -42,9 +42,9 @@ g1_wedges = [
     (5, 1, 7.),
     (3, 4, 9.) ]
 
-adj=AdjacencyListGraph.AdjacencyList(Vector, Vector, Int, Float64, "hiya")
+adj=AdjacencyListGraph.AdjacencyList(Vector, Vector, (), Float64, ())
 for i in 1:5
-	add_vertex!(0, adj)
+	add_vertex!((), adj)
 end
 
 for w in g1_wedges
