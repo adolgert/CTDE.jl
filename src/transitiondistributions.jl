@@ -1,7 +1,7 @@
 
 using Distributions
 import Distributions: quantile, rand, cdf, logccdf, invlogccdf
-import Base: rand, push!, isless
+import Base: rand, push!, isless, length
 
 export TransitionDistribution, WrappedDistribution, TransitionExponential
 export TransitionWeibull, TransitionGamma, TransitionLogLogistic
@@ -10,13 +10,21 @@ export parameters, quantile
 export EmpiricalDistribution, push!, build!
 export NelsonAalenDistribution, multiple_measures
 
-# These are the distributions of stochastic processes in absolute time.
-# So it's exponential, starting at some enabling time, or
-# Weibull, but with an enabling time. They can be sampled at any
-# time with the assumption that they have not fired up until
-# some time called "now."
+"""
+These are the distributions of stochastic processes in absolute time.
+So it's exponential, starting at some enabling time, or
+Weibull, but with an enabling time. They can be sampled at any
+time with the assumption that they have not fired up until
+some time called "now."
+"""
 abstract TransitionDistribution
 
+"""
+A `WrappedDistribution` combines a `ContinuousUnivariateDistribution`
+with an enabling time in order to produce a distribution which
+has an enabling time and can be sampled with a left shift,
+as required for continuous-time simulation.
+"""
 type WrappedDistribution <: TransitionDistribution
     # Relative to the enabling time.
     relative_distribution::Distributions.ContinuousUnivariateDistribution
@@ -24,16 +32,21 @@ type WrappedDistribution <: TransitionDistribution
     WrappedDistribution(d, e)=new(d, e)
 end
 
-# Given a distribution F
-# P(x<=t | x>t0)=P(x<=t && x>t0) / P(x>t0)
+"""
+Given a distribution F
+P(x<=t | x>t0)=P(x<=t && x>t0) / P(x>t0).
+This is the left shift, as described by Gibson and Bruck.
+"""
 function rand(distribution::WrappedDistribution, now::Float64,
         rng::MersenneTwister)
     quantile(distribution, now, rand(rng))
 end
 
-# Given a distribution F
-# P(x<=t | x>t0)=P(x<=t && x>t0) / P(x>t0)
-# U is a uniform variable between 0<U<=1
+"""
+Given a distribution F
+P(x<=t | x>t0)=P(x<=t && x>t0) / P(x>t0)
+U is a uniform variable between 0<U<=1
+"""
 function quantile(distribution::WrappedDistribution, t0::Float64,
         U::Float64)
     te=distribution.enabling_time
@@ -41,16 +54,23 @@ function quantile(distribution::WrappedDistribution, t0::Float64,
         U+(1-U)*cdf(distribution.relative_distribution, t0-te))
 end
 
-# The current time of the system is "now".
-# The cdf is being evaluated for a future time, "when".
+"""
+Cumulative distribution function.
+The current time of the system is "now".
+The cdf is being evaluated for a future time, "when".
+"""
 function cdf(dist::WrappedDistribution, when::Float64, now::Float64)
     t0te=cdf(dist.relative_distribution, now-dist.enabling_time)
     tte=cdf(dist.relative_distribution, when-dist.enabling_time)
     (tte-t0te)/(1-t0te)
 end
 
-# Given a hazard, the integral of that hazard over a time.
-# int_{t0}^{t1} hazard(s, te) ds
+"""
+Given a hazard, the integral of that hazard over a time.
+int_{t0}^{t1} hazard(s, te) ds.
+The hazard is f(t)/(1-F(t)), where F is the cumulative distribution
+function and f is its derivative.
+"""
 function hazard_integral(dist::WrappedDistribution, t1, t2)
     # logccdf is log(1-cdf(d, x))
     rel=dist.relative_distribution
@@ -58,7 +78,11 @@ function hazard_integral(dist::WrappedDistribution, t1, t2)
     logccdf(rel, t1-te)-logccdf(rel, t2-te)
 end
 
-# xa = int_{t0}^{t} hazard(s, te) ds. Solve for t.
+"""
+This is the inverse of the hazard integral. At what time
+would the cumulative hazard equal `xa`?
+xa = int_{t0}^{t} hazard(s, te) ds. Solve for t.
+"""
 function implicit_hazard_integral(dist::WrappedDistribution, xa, t0)
     rel=dist.relative_distribution
     te=dist.enabling_time
@@ -68,7 +92,11 @@ function implicit_hazard_integral(dist::WrappedDistribution, xa, t0)
 end
 
 
-######### Exponential
+"""
+An exponential distribution with an enabling time. No,
+it doesn't use the enabling time, but it has one
+for consistency.
+"""
 type TransitionExponential <: TransitionDistribution
     relative_distribution::Distributions.Exponential # relative time
     enabling_time::Float64
@@ -119,8 +147,11 @@ function test(TransitionExponential)
     @debug("TransitionExponential low ", too_low, " high ", too_high)
 end
 
-########### Weibull
-# F(T)=1-exp(-((T-Te)/lambda)^k)
+"""
+Weibull distribution. lambda is the scale parameter and k the
+shape parameter.
+F(T)=1-exp(-((T-Te)/lambda)^k)
+"""
 type TransitionWeibull <: TransitionDistribution
     parameters::Array{Float64,1}
 end
@@ -198,11 +229,13 @@ function test(dist::TransitionWeibull)
         " diff ", abs(k-k_est))
 end
 
-#################################
-# α - shape parameter
-# β - inverse scale parameter, also called rate parameter
-#
-# pdf=(β^α/Γ(α))x^(α-1) e^(-βx)
+"""
+A Gamma distribution.
+α - shape parameter
+β - inverse scale parameter, also called rate parameter
+
+pdf=(β^α/Γ(α))x^(α-1) e^(-βx)
+"""
 function TransitionGamma(α::Float64, β::Float64, te::Float64)
     # The supplied version uses θ=1/β.
     relative=Distributions.Gamma(α, 1/β)
@@ -237,7 +270,7 @@ function logccdf(d::LogLogistic, t::Real)
     -log( 1 + (t/d.alpha)^d.beta )
 end
 
-function invlogccdf(d::LogLogistic, lp::Real)
+function invlogccdf(d::LogLogistic, lp::Float64)
     d.alpha*(1-exp(-lp)^(1/d.beta))
 end
 
@@ -245,7 +278,13 @@ function TransitionLogLogistic(a::Float64, b::Float64, t::Float64)
     WrappedDistribution(LogLogistic(a,b), t)
 end
 
-#################################
+"""
+An empirical distribution is an estimator of a distribution
+given a set of samples of times at which it fired.
+For this implementation, first make the `EmpiricalDistribution`.
+Then use `push!` to add values. Then call `build!` before
+sampling from it.
+"""
 type EmpiricalDistribution
     samples::Array{Float64,1}
     built::Bool
@@ -286,7 +325,13 @@ function variance(ed::EmpiricalDistribution)
     total/length(ed.samples)
 end
 
-
+"""
+This compares two distributions. It returns the
+largest difference between an `EmpiricalDistribution`
+and the `other` distribution, along with a `Bool`
+that says whether the null hypothesis, that they agree, is rejected
+at level 0.05.
+"""
 function kolmogorov_smirnov_statistic(ed::EmpiricalDistribution, other)
     build!(ed)
     sup_diff=0.0
@@ -301,13 +346,20 @@ function kolmogorov_smirnov_statistic(ed::EmpiricalDistribution, other)
 end
 
 
-#############################################
+"""
+Given a set of observations of firing times and
+cancellation times of an event,
+this constructs a Nelson-Aalen estimator for the
+distribution.
+"""
 type NelsonAalenEntry
     when::Float64
     hazard_sum::Float64
 end
 
-# H(t)=\int \lambda=\sum_{t_i<=t} (d/n)
+"""
+H(t)=\int \lambda=\sum_{t_i<=t} (d/n)
+"""
 type NelsonAalenDistribution
     integrated_hazard::Array{NelsonAalenEntry,1}
     NelsonAalenDistribution(cnt::Int)=new(Array(NelsonAalenEntry, cnt))
@@ -354,7 +406,9 @@ function NelsonAalenDistribution(fired::Array{Float64,1}, not_fired::Array{Float
 end
 
 
-# Given measurements of several outcomes, construct Nelson-Aalen distributions
+"""
+Given measurements of several outcomes, construct Nelson-Aalen distributions
+"""
 function multiple_measures(eds::Array{EmpiricalDistribution,1})
     dist_len=Int64[length(x) for x in eds]
     nad=Array(NelsonAalenDistribution, length(eds))
