@@ -3,9 +3,8 @@ using Logging
 include("samplesemimarkov.jl")
 include("transitiondistributions.jl")
 include("partialprocess.jl")
-# SIR Example
-# This is a simple one.
 
+# Chemical reactions.
 """
 We make a SpeciesCount object so that the count of species
 is a type that is passed by reference.
@@ -67,6 +66,8 @@ function Update!(si::SpeciesIntensity, time, state...)
 	modified
 end
 
+
+# This starts the SIR example.
 
 type SIR
 	s::SpeciesCount
