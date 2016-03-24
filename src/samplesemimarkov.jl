@@ -81,6 +81,7 @@ function Next(propagator::NextReactionHazards, system, rng)
 		Hazards(system, rng) do clock, now, updated, rng2
 			Enable(propagator, clock, now, updated, rng2)
 	    end
+	    propagator.init=false
 	end
 
 	const NotFound=NRTransition(nothing, Inf)
