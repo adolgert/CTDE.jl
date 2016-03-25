@@ -36,7 +36,13 @@ function Sample(c::Clock, when, rng)
 end
 
 function Putative(c::Clock, when, exponential_interval)
-	Putative(c.intensity, when, exponential_interval-c.integrated_hazard)
+	remaining_hazard=exponential_interval-c.integrated_hazard
+	if remaining_hazard<0
+		@debug("Putative clock $c, interval $exponential_interval, ",
+			c.integrated_hazard)
+		assert(remaining_hazard>=0)
+	end
+	Putative(c.intensity, when, remaining_hazard)
 end
 
 

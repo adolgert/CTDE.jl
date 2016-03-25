@@ -175,7 +175,11 @@ end
 
 function hazard_integral(dist::TransitionWeibull, last, now)
     (λ, k, tₑ)=dist.parameters
-    ((now-tₑ)/λ)^k - ((last-tₑ)/λ)^k
+    if now-tₑ>eps(Float64)
+        return ((now-tₑ)/λ)^k - ((last-tₑ)/λ)^k
+    else
+        return 0::Float64
+    end
 end
 
 function cdf(dist::TransitionWeibull, when, now)
@@ -185,7 +189,12 @@ end
 function implicit_hazard_integral(dist::TransitionWeibull,
         cumulative_hazard, now)
     (λ, k, tₑ)=dist.parameters
-    tₑ + λ*(cumulative_hazard + ((now-tₑ)/λ)^k)^(1.0/k)
+    if now-tₑ>eps(Float64)
+        return tₑ + λ*(cumulative_hazard + ((now-tₑ)/λ)^k)^(1.0/k)
+    else
+        @debug("Weibull.implicit $cumulative_hazard")
+        return tₑ + λ*(cumulative_hazard)^(1.0/k)
+    end
 end
 
 function test(dist::TransitionWeibull)
