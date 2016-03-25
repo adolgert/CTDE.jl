@@ -26,10 +26,11 @@ The PartialProcess is responsible for providing enough information
 to find the next state and time of the process.
 """
 type PartialProcess
+	state
     time::Float64
     dependency_graph::DependencyGraph
     clocks::Vector{Clock}
-    PartialProcess()=new(0.0, DependencyGraph(), Vector{Clock}())
+    PartialProcess(state)=new(state, 0.0, DependencyGraph(), Vector{Clock}())
 end
 
 Time(pp::PartialProcess)=pp.time
@@ -46,7 +47,7 @@ end
 
 function Init(pp::PartialProcess)
 	for clock in pp.clocks
-		FireIntensity!(clock, pp.time,
+		FireIntensity!(clock, pp.time, pp.state,
 			IntensityProject(pp.dependency_graph, clock)...)
 	end
 end
@@ -61,15 +62,16 @@ end
 
 
 function Fire!(pp::PartialProcess, time, clock, rng, intensity_observer)
-	affected_clocks=FiringProject!(pp.dependency_graph, clock, clock.firing)
-	fireupdate=FireIntensity!(clock, time,
+	affected_clocks=FiringProject!(pp.dependency_graph, clock,
+			pp.state, clock.firing)
+	fireupdate=FireIntensity!(clock, time, pp.state,
 			IntensityProject(pp.dependency_graph, clock)...)
 	intensity_observer(clock, time, :Disabled, rng)
 	if Enabled(clock)
 		intensity_observer(clock, time, :Enabled, rng)
 	end
 	for affected in affected_clocks
-		updated=UpdateIntensity!(affected, time,
+		updated=UpdateIntensity!(affected, time, pp.state,
 				IntensityProject(pp.dependency_graph, affected))
 		if updated!=:Unmodified
 			intensity_observer(affected, time, updated, rng)

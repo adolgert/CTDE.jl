@@ -4,6 +4,8 @@ include("samplesemimarkov.jl")
 include("transitiondistributions.jl")
 include("partialprocess.jl")
 
+import Base: getindex, setindex!
+
 # Chemical reactions.
 """
 We make a SpeciesCount object so that the count of species
@@ -18,19 +20,19 @@ type StoichiometricOperator
 	stoichiometry::Vector{Int}
 end
 
-function Fire(so::StoichiometricOperator, args...)
-	for arg_idx = 1:length(args)
-		args[arg_idx].v+=so.stoichiometry[arg_idx]
+function Fire(so::StoichiometricOperator, state, keys...)
+	@debug("StoichiometricOperator.Fire $(typeof(keys)) $keys")
+	for arg_idx = 1:length(keys)
+		state[keys[arg_idx]]+=so.stoichiometry[arg_idx]
 	end
-	@debug("StoichiometricOperator.Fire $args")
 	# No reason to have a stoichiometry of 0, so report all
 	# arguments were modified.
-	args
+	keys
 end
 
 function BuildStoichiometricFiring(stoichiometry)
 	so=StoichiometricOperator(stoichiometry)
-	(args...)->Fire(so, args...)
+	(state, args...)->Fire(so, state, args...)
 end
 
 
@@ -42,11 +44,11 @@ end
 
 Enabled(si::SpeciesIntensity)=si.enabled
 
-function Update!(si::SpeciesIntensity, time, state...)
+function Update!(si::SpeciesIntensity, time, state, keys...)
 	modified=:Undefined
 	enabled_now=true
-	for s in state
-		if s.v<1
+	for key in keys
+		if state[key]<1
 			enabled_now=false
 			break
 		end
@@ -76,6 +78,13 @@ type SIR
 	SIR()=new(SpeciesCount(1), SpeciesCount(0), SpeciesCount(0))
 end
 
+# The state has to be indexed by a key. Here, we use the object
+# itself as the key, so we pretend to access the state.
+# Instead, we access a member of the object.
+getindex(sir::Vector{SIR}, disease_state::SpeciesCount)=disease_state.v
+function setindex!(sir::Vector{SIR}, value::Int, d::SpeciesCount)
+	d.v=value
+end
 
 function MakeSIR(N=10)
 	state=Vector{SIR}(N)
@@ -85,7 +94,7 @@ function MakeSIR(N=10)
 	state[1].s.v=0
 	state[1].i.v=1
 
-	process=PartialProcess()
+	process=PartialProcess(state)
 
 	# Add recoveries.
 	for ridx = 1:N

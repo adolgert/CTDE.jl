@@ -15,19 +15,19 @@ show(io::IO, c::Clock)=show(io, c.name)
 
 Enabled(c::Clock)=Enabled(c.intensity)
 
-function FireIntensity!(c::Clock, time, state...)
+function FireIntensity!(c::Clock, time, state, keys...)
 	# @debug("FireIntensity state $state")
 	c.last_modification_time=time
 	c.integrated_hazard=0
-	Update!(c.intensity, time, state...)
+	Update!(c.intensity, time, state, keys...)
 end
 
-function UpdateIntensity!(c::Clock, time, state)
+function UpdateIntensity!(c::Clock, time, state, keys)
 	if Enabled(c.intensity)
 		c.integrated_hazard+=HazardIntegral(c.intensity,
 				c.last_modification_time, time)
 	end
-	Update!(c.intensity, time, state...)
+	Update!(c.intensity, time, state, keys...)
 end
 
 
@@ -95,8 +95,8 @@ function IntensityProject(dg::DependencyGraph, clock)
 	dg.clock[clock].hazard
 end
 
-function FiringProject!(dg::DependencyGraph, clock, operator)
-	affected_places=operator(dg.clock[clock].firing...)
+function FiringProject!(dg::DependencyGraph, clock, state, operator)
+	affected_places=operator(state, dg.clock[clock].firing...)
 	affected_clocks=Set()
 	for place in affected_places
 		union!(affected_clocks, dg.place[place])
