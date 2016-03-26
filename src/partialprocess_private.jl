@@ -16,7 +16,7 @@ show(io::IO, c::Clock)=show(io, c.name)
 Enabled(c::Clock)=Enabled(c.intensity)
 
 function FireIntensity!(c::Clock, time, state, keys...)
-	# @debug("FireIntensity state $state")
+	@debug("Reset modification time for $(c.name)")
 	c.last_modification_time=time
 	c.integrated_hazard=0
 	Update!(c.intensity, time, state, keys...)
@@ -24,8 +24,10 @@ end
 
 function UpdateIntensity!(c::Clock, time, state, keys)
 	if Enabled(c.intensity)
-		c.integrated_hazard+=HazardIntegral(c.intensity,
-				c.last_modification_time, time)
+		added=HazardIntegral(c.intensity, c.last_modification_time, time)
+		c.integrated_hazard+=added
+		c.last_modification_time=time
+		@debug("Added $added to integrated hazard of $(c.name)")
 	end
 	Update!(c.intensity, time, state, keys...)
 end

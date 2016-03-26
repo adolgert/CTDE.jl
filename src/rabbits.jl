@@ -20,6 +20,9 @@ type Board
   Board(M, N)=new(zeros(Int, M, M), Array(Tuple{Int,Int}, N), M, N)
 end
 
+"""
+Are all individuals present and accounted for? This is just for debugging.
+"""
 function Consistent(b::Board)
 	consistent=true
 	for c=1:b.N
@@ -139,7 +142,7 @@ function WanderDirection(state, m::Tuple{Int,Int})
 	changed=[(i, 0)]
 	for j=1:length(surroundings)
 		# Modification to individual's surroundings.
-		if surroundings[j]!=newsurroundings[j]
+		if (surroundings[j]==0)!=(newsurroundings[j]==0)
 			push!(changed, (i, -j))
 		end
 		# Modification to surroundings of individuals nearby.
@@ -171,6 +174,7 @@ function WanderDirection(state, m::Tuple{Int,Int})
 		@warn("Inconsistent board Wander exit $m")
 		assert(false)
 	end
+	@debug("Wander changed $changed")
 	return changed
 end
 
@@ -188,9 +192,9 @@ function Update!(wi::WanderIntensity, time, state,
 	assert(Consistent(state))
 	modified=:Undefined
 	enabled_now=false
-	@debug("Update! m $m")
 
 	enabled_now=(state[m[1], m[2]]==0)
+	@debug("Update! me $me m $m was $(wi.enabled) now $enabled_now")
 
 	if enabled_now != wi.enabled
 		if enabled_now
@@ -219,7 +223,7 @@ function MakeBoard(M, N, rng)
 	for set_idx =1:N
 		searching=true
 		while searching
-			location=[rand(1:M), rand(1:M)]
+			location=[rand(rng, 1:M), rand(rng, 1:M)]
 			@debug("individual $set_idx location $location")
 			if state[location[1], location[2]]==0
 				state[location[1], location[2]]=set_idx
