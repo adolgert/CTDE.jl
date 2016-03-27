@@ -65,9 +65,10 @@ function Hazards(f::Function, pp::PartialProcess, rng)
 end
 
 
-function Fire!(pp::PartialProcess, time, clock, rng, intensity_observer)
-	affected_clocks=FiringProject!(pp.dependency_graph, clock,
-			pp.state, clock.firing)
+function Fire!(pp::PartialProcess, time, clock, rng, intensity_observer,
+		state_observer)
+	affected_clocks, affected_places=FiringProject!(
+			pp.dependency_graph, clock, pp.state, clock.firing)
 	fireupdate=FireIntensity!(clock, time, pp.state,
 			IntensityProject(pp.dependency_graph, clock)...)
 	intensity_observer(clock, time, :Fired, rng)
@@ -82,13 +83,14 @@ function Fire!(pp::PartialProcess, time, clock, rng, intensity_observer)
 		end
 	end
 	pp.time=time
+	state_observer(pp.state, affected_places, clock.name, time)
 end
 
 
-function Dynamics(pp::PartialProcess, sampler, rng)
+function Dynamics(pp::PartialProcess, sampler, state_observer, rng)
 	time, clock=Next(sampler, pp, rng)
 	if !isinf(time)
-		Fire!(pp, time, clock, rng, Observer(sampler))
+		Fire!(pp, time, clock, rng, Observer(sampler), state_observer)
 	end
 	(time, clock)
 end

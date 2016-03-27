@@ -110,6 +110,6 @@ function FiringProject!(dg::DependencyGraph, clock, state, operator)
 		union!(affected_clocks, dg.place[place])
 	end
 	setdiff!(affected_clocks, [clock])
-	affected_clocks
+	(affected_clocks, affected_places)
 end
 

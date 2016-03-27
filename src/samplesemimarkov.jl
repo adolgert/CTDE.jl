@@ -199,3 +199,89 @@ function print_next_reaction_hazards(propagator::NextReactionHazards)
     	end
     end
 end
+
+
+
+"""
+This implements an incorrect algorithm which is the most common
+intuitive choice. Each trajectory's distribution looks correct,
+but the master equation isn't correct.
+"""
+
+type NaiveSampler
+    firing_queue::MutableBinaryHeap{NRTransition,DataStructures.LessThan}
+    # This maps from transition to entry in the firing queue.
+    transition_entry::Dict{Any,Int}
+    init::Bool
+end
+
+"""
+Construct a NaiveSampler.
+"""
+function NaiveSampler()
+    heap=mutable_binary_minheap(NRTransition)
+    @warn("SampleSemiMarkov.NaiveSampler This sampler is WRONG")
+    state=Dict{Any,Int}()
+    NaiveSampler(heap, state, true)
+end
+
+
+# Finds the next one without removing it from the queue.
+function Next(propagator::NaiveSampler, system, rng)
+    if propagator.init
+        Hazards(system, rng) do clock, now, updated, rng2
+            NaiveObserve(propagator, clock, now, updated, rng2)
+        end
+        propagator.init=false
+    end
+
+    const NotFound=NRTransition(nothing, Inf)
+    if !isempty(propagator.firing_queue)
+        least=top(propagator.firing_queue)
+    else
+        least=NotFound
+    end
+    @debug("SampleSemiMarkov.next queue length ",
+            length(propagator.firing_queue), " least ", least)
+    (least.time, least.key)
+end
+
+
+"""
+Returns an observer of intensities to decide what to
+do when they change.
+"""
+function Observer(propagator::NaiveSampler)
+    function nrobserve(clock, time, updated, rng)
+        NaiveObserve(propagator, clock, time, updated, rng)
+    end
+end
+
+
+function NaiveObserve(propagator::NaiveSampler, clock,
+            time, updated, rng)
+    key=clock
+    if updated==:Fired || updated==:Disabled
+        heap_handle=propagator.transition_entry[key]
+        # We store distributions in order to calculate remaining hazard
+        # which will happen AFTER the state has changed.
+        update!(propagator.firing_queue, heap_handle,
+            NRTransition(key, -1.))
+        todelete=pop!(propagator.firing_queue)
+        delete!(propagator.transition_entry, key)
+
+    elseif updated==:Enabled
+        when_fire=Sample(clock, time, rng)
+        heap_handle=push!(propagator.firing_queue,
+                NRTransition(key, when_fire))
+        propagator.transition_entry[key]=heap_handle
+
+    elseif updated==:Modified
+        when_fire=Sample(clock, time, rng)
+        heap_handle=propagator.transition_entry[key]
+        update!(propagator.firing_queue, heap_handle,
+                NRTransition(key, when_fire))
+    else
+        assert(false)
+    end
+end
