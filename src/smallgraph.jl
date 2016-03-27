@@ -78,9 +78,10 @@ add_edge(g::UndirectedGraph, source, target)=
 	add_edge(g, source, target, Dict{Any,Any}())
 
 ####################
-out_degree(g::SmallGraph, node)=length(g.node[node])
+out_degree(g::SmallGraph, node)=length(g.edge[node])
 neighbors(g::SmallGraph, node)=keys(g.edge[node])
 length(g::SmallGraph)=length(g.node)
+#mean_degree(g::SmallGraph) = 
 
 ###############################################################
 # The multigraph has a list of edges from each vertex instead
