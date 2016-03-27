@@ -19,7 +19,7 @@ function FireIntensity!(c::Clock, time, state, keys...)
 	@debug("Reset modification time for $(c.name)")
 	c.last_modification_time=time
 	c.integrated_hazard=0
-	Update!(c.intensity, time, state, keys...)
+	Reset!(c.intensity, time, state, keys...)
 end
 
 function UpdateIntensity!(c::Clock, time, state, keys)
@@ -50,8 +50,8 @@ end
 
 # Dependency Graph for causality in the process
 type ClockAdjacency
-    hazard::Tuple
-    firing::Tuple
+    hazard
+    firing
     ClockAdjacency()=new()
 end
 

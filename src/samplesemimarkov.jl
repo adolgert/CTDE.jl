@@ -102,8 +102,8 @@ do when they change.
 """
 function Observer(propagator::NextReactionHazards)
 	function nrobserve(clock, time, updated, rng)
-		if updated==:Disabled
-			Disable(propagator, clock, time)
+		if updated==:Disabled || updated==:Fired
+			Disable(propagator, clock, time, updated, rng)
 		else
 			Enable(propagator, clock, time, updated, rng)
 		end
@@ -154,7 +154,8 @@ end
 
 
 # Remove a transition from the queue because it was disabled.
-function Disable(propagator::NextReactionHazards, key, now)
+function Disable(propagator::NextReactionHazards, key, now,
+        updated, rng)
 	record=propagator.transition_state[key]
 	# We store distributions in order to calculate remaining hazard
 	# which will happen AFTER the state has changed.
@@ -162,7 +163,15 @@ function Disable(propagator::NextReactionHazards, key, now)
 		NRTransition(key, -1.))
 	todelete=pop!(propagator.firing_queue)
 	@assert(todelete.key==key && todelete.time==-1)
-	record.heap_handle=-1 # This is the official sign it was disabled.
+    if updated==:Disabled
+    	record.heap_handle=-1 # This is the official sign it was disabled.
+    elseif updated==:Fired
+        # Deleting the key is slower for small, finite systems,
+        # but it makes infinite (meaning long-running) systems possible.
+        delete!(propagator.transition_state, key)
+    else
+        assert(updated==:Disabled || updated==:Fired)
+    end
 end
 
 

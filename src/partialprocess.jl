@@ -36,8 +36,12 @@ end
 Time(pp::PartialProcess)=pp.time
 
 
+"""
+The dependencies, int_deps and fire_deps, have to be arrays of keys
+into the state.
+"""
 function AddTransition!(pp::PartialProcess, intensity::Intensity,
-		int_deps::Tuple, firing::Function, fire_deps::Tuple, name)
+		int_deps, firing::Function, fire_deps, name)
 	clock=Clock(intensity, firing, name)
 	push!(pp.clocks, clock)
 	AddIntensity!(pp.dependency_graph, clock, int_deps)
@@ -66,7 +70,7 @@ function Fire!(pp::PartialProcess, time, clock, rng, intensity_observer)
 			pp.state, clock.firing)
 	fireupdate=FireIntensity!(clock, time, pp.state,
 			IntensityProject(pp.dependency_graph, clock)...)
-	intensity_observer(clock, time, :Disabled, rng)
+	intensity_observer(clock, time, :Fired, rng)
 	if Enabled(clock)
 		intensity_observer(clock, time, :Enabled, rng)
 	end
