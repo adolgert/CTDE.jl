@@ -15,9 +15,11 @@ can write hazards that depend on neighbors or on absolute locations.
 type Board
   state::Array{Int,2}
   individuals::Array{Tuple{Int,Int}, 1}
-  M::Int
-  N::Int
-  Board(M, N)=new(zeros(Int, M, M), Array(Tuple{Int,Int}, N), M, N)
+  disease::Array{Int, 1}
+  M::Int # size of the board
+  N::Int # number of individuals
+  Board(M, N)=new(zeros(Int, M, M), Array(Tuple{Int,Int}, N),
+  		zeros(Int, N), M, N)
 end
 
 """
@@ -53,8 +55,9 @@ space. The relative space is the (individual id, -direction).
 The absolute space is (x, y). The values are either
 0 for nobody there, -1 for off the board, or the index
 of the individual in that location.
+c=0 for location. c=1 for disease state
 """
-function getindex(board::Board, a, b)
+function getindex(board::Board, a, b, c)
 	# Look at relative locations.
 	if b<0
 		direction=Dict(
@@ -87,8 +90,9 @@ the value to put at a grid cell between (1,1) and (M, M),
 where the value is 0 or an individual index, or make the value
 an individual index and the grid square a relative location
 of the form (individual index, relative location).
+c=0 for location. c=1 for disease state.
 """
-function setindex!(board::Board, v::Int, a, b)
+function setindex!(board::Board, v::Int, a, b, c)
 	# Setting a value at a relative location moves that individual.
 	if b<1
 		assert(v==a)
@@ -132,40 +136,40 @@ function setindex!(board::Board, v::Int, a, b)
 end
 
 
-function WanderDirection(state, m::Tuple{Int,Int})
+function WanderDirection(state, m::Tuple{Int,Int,Int})
 	assert(Consistent(state))
 	i=m[1]
-	surroundings=[state[i,-1], state[i, -2], state[i, -3], state[i, -4]]
-	state[m[1], m[2]]=m[1]
-	newsurroundings=[state[i,-1], state[i, -2], state[i, -3], state[i, -4]]
+	surroundings=[state[i, -j, 0] for j = 1:4]
+	state[m[1], m[2], m[3]]=m[1]
+	newsurroundings=[state[i, -j, 0] for j = 1:4]
 	# changed=Array(Tuple{Int, Int}}, 0)
-	changed=[(i, 0)]
+	changed=[(i, 0, 0)]
 	for j=1:length(surroundings)
 		# Modification to individual's surroundings.
 		if (surroundings[j]==0)!=(newsurroundings[j]==0)
-			push!(changed, (i, -j))
+			push!(changed, (i, -j, 0))
 		end
 		# Modification to surroundings of individuals nearby.
 		if surroundings[j]>0
 			if j==1
-				push!(changed, (surroundings[j], -3))
+				push!(changed, (surroundings[j], -3, 0))
 			elseif j==2
-				push!(changed, (surroundings[j], -4))
+				push!(changed, (surroundings[j], -4, 0))
 			elseif j==3
-				push!(changed, (surroundings[j], -1))
+				push!(changed, (surroundings[j], -1, 0))
 			elseif j==4
-				push!(changed, (surroundings[j], -2))
+				push!(changed, (surroundings[j], -2, 0))
 			end
 		end
 		if newsurroundings[j]>0
 			if j==1
-				push!(changed, (newsurroundings[j], -3))
+				push!(changed, (newsurroundings[j], -3, 0))
 			elseif j==2
-				push!(changed, (newsurroundings[j], -4))
+				push!(changed, (newsurroundings[j], -4, 0))
 			elseif j==3
-				push!(changed, (newsurroundings[j], -1))
+				push!(changed, (newsurroundings[j], -1, 0))
 			elseif j==4
-				push!(changed, (newsurroundings[j], -2))
+				push!(changed, (newsurroundings[j], -2, 0))
 			end
 		end
 	end
@@ -188,12 +192,12 @@ type WanderIntensity <: Intensity
 end
 
 function Update!(wi::WanderIntensity, time, state,
-		me::Tuple{Int, Int}, m::Tuple{Int, Int})
+		me::Tuple{Int, Int, Int}, m::Tuple{Int, Int, Int})
 	assert(Consistent(state))
 	modified=:Undefined
 	enabled_now=false
 
-	enabled_now=(state[m[1], m[2]]==0)
+	enabled_now=(state[m[1], m[2], m[3]]==0)
 	@debug("Update! me $me m $m was $(wi.enabled) now $enabled_now")
 
 	if enabled_now != wi.enabled
@@ -225,8 +229,8 @@ function MakeBoard(M, N, rng)
 		while searching
 			location=[rand(rng, 1:M), rand(rng, 1:M)]
 			@debug("individual $set_idx location $location")
-			if state[location[1], location[2]]==0
-				state[location[1], location[2]]=set_idx
+			if state[location[1], location[2], 0]==0
+				state[location[1], location[2], 0]=set_idx
 				searching=false
 			end
 		end
@@ -237,9 +241,10 @@ function MakeBoard(M, N, rng)
 	for midx = 1:N
 		for direction = 1:4
 			hazard=WanderIntensity(TransitionWeibull(1, 2, 0))
-			action=WanderDirection
-			AddTransition!(process, hazard, ((midx, 0), (midx, -direction),),
-				WanderDirection, ((midx, -direction),), "$midx$direction")
+			AddTransition!(process,
+				hazard, ((midx, 0, 0), (midx, -direction, 0),),
+				WanderDirection, ((midx, -direction, 0),),
+				"$midx$direction")
 		end
 	end
 	Consistent(state)
