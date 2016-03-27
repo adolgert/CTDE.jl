@@ -18,9 +18,14 @@ type Board
   disease::Array{Int, 1}
   M::Int # size of the board
   N::Int # number of individuals
+  direction::Array{Int, 2}
+  opposite::Array{Int, 1}
   Board(M, N)=new(zeros(Int, M, M), Array(Tuple{Int,Int}, N),
-  		zeros(Int, N), M, N)
+  		zeros(Int, N), M, N,
+  		[ [0, -1] [-1, 0] [0, 1] [1, 0] ], [3, 4, 1, 2])
 end
+
+Infected(b::Board)=countnz(b.disease)
 
 """
 Are all individuals present and accounted for? This is just for debugging.
@@ -58,17 +63,18 @@ of the individual in that location.
 c=0 for location. c=1 for disease state
 """
 function getindex(board::Board, a, b, c)
-	# Look at relative locations.
-	if b<0
-		direction=Dict(
-			 0 => [0, 0],
-			-1 => [0, -1],
-			-2 => [-1, 0],
-			-3 => [0, 1],
-			-4 => [1, 0]
-			)
+	if c==1
+		if b<0
+			individual=board[a, b, 0]
+			assert(individual>0)
+			return board.disease[individual]
+		else
+			return board.disease[a]
+		end
+	elseif b<0
+		# Look at relative locations.
 		center=board.individuals[a]
-		location=[center[1], center[2]] + direction[b]
+		location=[center[1], center[2]] + board.direction[:, -b]
 		if !(0 < location[1] < board.M+1)
 			return -1
 		elseif !(0 < location[2]< board.M+1)
@@ -93,18 +99,24 @@ of the form (individual index, relative location).
 c=0 for location. c=1 for disease state.
 """
 function setindex!(board::Board, v::Int, a, b, c)
-	# Setting a value at a relative location moves that individual.
-	if b<1
+	if c==1
+		if b<0
+			# a is the individual, b is the relative location.
+			# v is the new disease state
+			susceptible=board[a, b, 0]
+			assert(susceptible>0)
+			board.disease[susceptible]=v
+			@debug("setindex! disease individual $susceptible to $v")
+			return v
+		else
+			board.disease[a]=v
+			return v
+		end
+	elseif b<1
+		# Setting a value at a relative location moves that individual.
 		assert(v==a)
-		direction=Dict(
-			 0 => [0, 0],
-			-1 => [0, -1],
-			-2 => [-1, 0],
-			-3 => [0, 1],
-			-4 => [1, 0]
-			)
 		location=board.individuals[a]
-		newlocation=[location[1], location[2]]+direction[b]
+		newlocation=[location[1], location[2]]+board.direction[:, -b]
 		# Cannot move off of the board.
 		assert(0 < newlocation[1] < board.M+1)
 		assert(0 < newlocation[2] < board.M+1)
@@ -151,26 +163,15 @@ function WanderDirection(state, m::Tuple{Int,Int,Int})
 		end
 		# Modification to surroundings of individuals nearby.
 		if surroundings[j]>0
-			if j==1
-				push!(changed, (surroundings[j], -3, 0))
-			elseif j==2
-				push!(changed, (surroundings[j], -4, 0))
-			elseif j==3
-				push!(changed, (surroundings[j], -1, 0))
-			elseif j==4
-				push!(changed, (surroundings[j], -2, 0))
-			end
+			push!(changed, (surroundings[j], -state.opposite[j], 0))
+			# Moving can change whom you can infect, too.
+			push!(changed, (surroundings[j], -state.opposite[j], 1))
+			push!(changed, (surroundings[j], -j, 1))
 		end
 		if newsurroundings[j]>0
-			if j==1
-				push!(changed, (newsurroundings[j], -3, 0))
-			elseif j==2
-				push!(changed, (newsurroundings[j], -4, 0))
-			elseif j==3
-				push!(changed, (newsurroundings[j], -1, 0))
-			elseif j==4
-				push!(changed, (newsurroundings[j], -2, 0))
-			end
+			push!(changed, (newsurroundings[j], -state.opposite[j], 0))
+			push!(changed, (newsurroundings[j], -state.opposite[j], 1))
+			push!(changed, (newsurroundings[j], -j, 1))
 		end
 	end
 
@@ -219,6 +220,49 @@ end
 
 
 
+function Infect(state, w::Tuple{Int, Int, Int})
+	whom=state[w[1], w[2], 0]
+	# The disease state of the neighbor changed,
+	# and the neighbor's own disease state changed.
+	# and the relative disease state of us for the neighbor.
+	changed=[w, (whom, 0, 1), (whom, -state.opposite[-w[2]], 1)]
+	state[w[1], w[2], w[3]]=1
+	if state[whom, 0, 1]!=1
+		@warn("Infect w $w whom $whom")
+		assert(state[whom, 0, 1]==1)
+	end
+	return changed
+end
+
+
+type InfectIntensity <: Intensity
+	distribution::TransitionDistribution
+	enabled::Bool
+	InfectIntensity()=new(TransitionExponential(10.0, 0.0), false)
+end
+
+function Update!(ii::InfectIntensity, time, state, i, w, s)
+	modified=:Undefined
+	infectious=state[i[1], i[2], i[3]]==1
+	haveneighbor=state[w[1], w[2], w[3]]>0
+	enabled=( infectious && haveneighbor && state[s[1], s[2], s[3]]==0)
+	if enabled != ii.enabled
+		if enabled
+			ii.distribution.enabling_time=time
+			modified=:Enabled
+		else
+			modified=:Disabled
+		end
+		ii.enabled=enabled
+	else
+		modified=:Unmodified
+	end
+	@debug("InfectIntensity.Update! $i $s i $infectious, n $haveneighbor ",
+			"e $enabled")
+	modified
+end
+
+
 function MakeBoard(M, N, rng)
 	# M=10 # board dimension
 	# N=10 # number of individuals
@@ -236,6 +280,11 @@ function MakeBoard(M, N, rng)
 		end
 	end
 
+	for inf_idx=1:5
+		# Infect individual
+		state[inf_idx, 0, 1]=1
+	end
+
 	process=PartialProcess(state)
 
 	for midx = 1:N
@@ -244,9 +293,17 @@ function MakeBoard(M, N, rng)
 			AddTransition!(process,
 				hazard, ((midx, 0, 0), (midx, -direction, 0),),
 				WanderDirection, ((midx, -direction, 0),),
-				"$midx$direction")
+				"m$midx$direction")
+
+			infect=InfectIntensity()
+			AddTransition!(process,
+				infect, ((midx, 0, 1), (midx, -direction, 0),
+						(midx, -direction, 1)),
+				Infect, ((midx, -direction, 1),),
+				"i$midx$direction")
 		end
 	end
+
 	Consistent(state)
 	(process, state)
 end
@@ -260,11 +317,16 @@ function Run()
 	# #sampler=FirstReaction()
 	sampler=NextReactionHazards()
 	time, clock=Dynamics(process, sampler, rng)
-	while !isinf(time) && time<10
-		print("$time $clock\n$(state.state)\n")
+	while !isinf(time) && Infected(state)<state.N
+		if startswith(clock.name, "i")
+			print("$time $clock\n$(state.state)\n")
+		end
 		
 		time, clock=Dynamics(process, sampler, rng)
 	end
+	print("time $time\n")
+	print(state.state, "\n")
+	print(state.disease, "\n")
 end
 
 Run()

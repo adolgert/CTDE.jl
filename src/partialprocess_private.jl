@@ -26,9 +26,9 @@ function UpdateIntensity!(c::Clock, time, state, keys)
 	if Enabled(c.intensity)
 		added=HazardIntegral(c.intensity, c.last_modification_time, time)
 		c.integrated_hazard+=added
-		c.last_modification_time=time
 		@debug("Added $added to integrated hazard of $(c.name)")
 	end
+	c.last_modification_time=time
 	Update!(c.intensity, time, state, keys...)
 end
 
