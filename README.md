@@ -4,7 +4,7 @@ CTDE
 Continuous-time, stochastic discrete event simulation.
 This is classical Gillespie algorithm for time-dependent hazards, updated according to recent work by Anderson and Kurtz.
 
-[Documentation](wiki/Continuous-Time-Discrete-Event-Module-for-Julia) is on the wiki.
+[Documentation](adolgert/CTDE.jl/wiki/Continuous-Time-Discrete-Event-Module-for-Julia) is on the wiki.
 
 Drew Dolgert, ajd27@cornell.edu
 Contact me with any questions.
