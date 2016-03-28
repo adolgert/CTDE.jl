@@ -2,8 +2,8 @@ using Distributions
 using DataStructures
 
 import Base: <, >, ==
-export FirstReaction, NextReactionHazards
-export NRTransition, Next, Fire
+export FirstReaction, NextReactionHazards, NaiveSampler
+export NRTransition, Next, Observer
 
 """
 A record of a transition and the time.

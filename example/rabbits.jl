@@ -1,10 +1,10 @@
 using Logging
-@Logging.configure(level=DEBUG)
-include("samplesemimarkov.jl")
-include("transitiondistributions.jl")
-include("partialprocess.jl")
+@Logging.configure(level=INFO)
+using CTDE
+using Gadfly
 
 import Base: getindex, setindex!
+import CTDE: Update!, Reset!
 
 
 """
@@ -309,21 +309,21 @@ function MakeBoard(M, N, rng)
 end
 
 
+function ObserveStep(state, affected, clock_name, time::Float64)
+	if startswith(clock_name, "i")
+		print("$time $clock_name\n$(state.state)\n")
+	end
+	Infected(state)<state.N
+end
 
 function Run()
 	rng=MersenneTwister(333333)
 	process, state=MakeBoard(10, 10, rng)
-	Init(process)
 	# #sampler=FirstReaction()
 	sampler=NextReactionHazards()
-	time, clock=Dynamics(process, sampler, rng)
-	while !isinf(time) && Infected(state)<state.N
-		if startswith(clock.name, "i")
-			print("$time $clock\n$(state.state)\n")
-		end
-		
-		time, clock=Dynamics(process, sampler, rng)
-	end
+
+    RunSimulation(process, sampler, ObserveStep, rng)
+
 	print("time $time\n")
 	print(state.state, "\n")
 	print(state.disease, "\n")

@@ -1,10 +1,7 @@
-using Logging
-@Logging.configure(level=DEBUG)
-include("samplesemimarkov.jl")
-include("transitiondistributions.jl")
-include("partialprocess.jl")
+using CTDE
 
 import Base: getindex, setindex!
+import CTDE: Update!, Reset!
 
 # Chemical reactions.
 """
@@ -21,7 +18,7 @@ type StoichiometricOperator
 end
 
 function Fire(so::StoichiometricOperator, state, keys...)
-	@debug("StoichiometricOperator.Fire $(typeof(keys)) $keys")
+	# @debug("StoichiometricOperator.Fire $(typeof(keys)) $keys")
 	for arg_idx = 1:length(keys)
 		state[keys[arg_idx]]+=so.stoichiometry[arg_idx]
 	end
@@ -137,19 +134,18 @@ function PrintState(state::Vector{SIR})
 	print("\n")
 end
 
-function TestHash()
-	rng=MersenneTwister(333333)
-	process, state=MakeSIR(3)
-	Init(process)
-	#sampler=FirstReaction()
-	sampler=NextReactionHazards()
-	time, clock=Dynamics(process, sampler, rng)
-	while !isinf(time)
-		print("$time $clock ")
-		PrintState(state)
-		time, clock=Dynamics(process, sampler, rng)
-	end
-	print("Successful completion\n")
+function ObserveStep(state, affected, clock_name, time::Float64)
+	print("$time $clock_name ")
+	PrintState(state)
+	true
 end
 
-TestHash()
+function TestObjectSIR()
+	rng=MersenneTwister(333333)
+	process, state=MakeSIR(30)
+	#sampler=FirstReaction()
+	sampler=NextReactionHazards()
+	RunSimulation(process, sampler, ObserveStep, rng)
+end
+
+TestObjectSIR()

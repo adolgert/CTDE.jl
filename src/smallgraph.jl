@@ -96,7 +96,7 @@ length(g::SmallGraph)=length(g.node)
 ###############################################################
 type UndirectedMultiGraph <: SmallGraph
 	node::Dict{Any,Dict{Any,Any}}
-	edge::Dict{Any,Array{(Any, Dict{Any,Any}),1}}
+	edge::Dict{Any,Array{Tuple{Any, Dict{Any,Any}},1}}
 end
 
 function UndirectedMultiGraph()

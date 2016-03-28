@@ -5,4 +5,5 @@ module CTDE
     include("transitiondistributions.jl")
     include("partialprocess.jl")
     include("category_fsm.jl")
+    include("smallgraph.jl")
 end

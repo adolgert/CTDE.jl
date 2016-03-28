@@ -1,3 +1,5 @@
+export Intensity, Enabled, Update!, Reset!, Sample, Putative, HazardIntegral
+export PartialProcess, Time, AddTransition!, Init, Hazards, Fire!
 include("partialprocess_private.jl")
 
 """
@@ -8,14 +10,37 @@ what is the current distribution going forward.
 """
 abstract Intensity
 
+"""
+If the intensity defines an enabled member, this will
+take care of the Enabled() function.
+"""
 Enabled(intensity::Intensity)=intensity.enabled
 
+Update!(intensity::Intensity, time, state, keys...)=nothing
+
+"""
+Most intensities don't need to reset when the transition fires.
+"""
+function Reset!(intensity::Intensity, time, state, keys...)
+	Update!(intensity, time, state, keys...)
+end
+
+"""
+If the intensity defines a distribution member, this will do sampling.
+"""
 Sample(intensity::Intensity, when, rng)=rand(intensity.distribution, when, rng)
 
+"""
+If the intensity defines a distribution member, this will do sampling.
+"""
 function Putative(intensity::Intensity, when, exponential_interval)
 	implicit_hazard_integral(intensity.distribution, exponential_interval, when)
 end
 
+"""
+If the intensity defines a distribution member, this will do the
+hazard integral.
+"""
 function HazardIntegral(intensity::Intensity, time0, time1)
 	hazard_integral(intensity.distribution, time0, time1)
 end
@@ -84,13 +109,4 @@ function Fire!(pp::PartialProcess, time, clock, rng, intensity_observer,
 	end
 	pp.time=time
 	state_observer(pp.state, affected_places, clock.name, time)
-end
-
-
-function Dynamics(pp::PartialProcess, sampler, state_observer, rng)
-	time, clock=Next(sampler, pp, rng)
-	if !isinf(time)
-		Fire!(pp, time, clock, rng, Observer(sampler), state_observer)
-	end
-	(time, clock)
 end

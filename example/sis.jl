@@ -3,17 +3,11 @@
 # and measures not the average residence in each state
 # but the probability of being in a particular state at a
 # particular time, so it looks at the master equation.
-using Logging
-@Logging.configure(level=INFO)
-include("samplesemimarkov.jl")
-include("transitiondistributions.jl")
-include("partialprocess.jl")
-include("category_fsm.jl")
-
+using CTDE
 using Gadfly
 
 import Base: getindex, setindex!
-
+import CTDE: Update!, Reset!
 
 function Recover(state, who)
     state[who]=0
@@ -193,7 +187,7 @@ function ObserveState(so::SamplingObserver, state::Array{Int,1},
 end
 
 function Observer(so::SamplingObserver)
-    function sobserve(state::Array{Int,1},affected, clock_name, time::Float64)
+    function sobserve(state::Array{Int,1}, affected, clock_name, time::Float64)
         ObserveState(so, state, affected, clock_name, time)
     end
 end
@@ -216,7 +210,7 @@ function Run()
     parameters=Dict(:Gamma =>1.0, :Beta => 1.0)
     process, state=MakeProcess(N, parameters, rng)
     observer=SamplingObserver(N, 1000)
-    sampler=NaiveSampler()
+    sampler=NextReactionHazards()
 
     RunSimulation(process, sampler, Observer(observer), rng)
 

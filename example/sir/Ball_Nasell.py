@@ -1,7 +1,7 @@
 #/opt/local/bin/python3.3
 
 #
-# Formulae taken fro Ball, F. and Nasell, I. 'The shape of the size 
+# Formulae taken from Ball, F. and Nasell, I. 'The shape of the size 
 # distribution of an epidemic in a finite population.' 
 # Math. Biosc. 123:167-181 (1994).
 #
