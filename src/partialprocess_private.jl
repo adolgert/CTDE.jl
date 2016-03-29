@@ -7,8 +7,8 @@ type Clock
 	last_modification_time::Float64
 	integrated_hazard::Float64
 	name # A name assigned by the client API.
-	sampler_args # classification of this clock for the sampler.
-	Clock(intensity, firing, name)=new(intensity, firing,
+	kind # classification of this clock for the sampler.
+	Clock(intensity, firing, name, sampler_args)=new(intensity, firing,
 		0.0, 0.0, name, sampler_args)
 end
 

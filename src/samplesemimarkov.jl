@@ -2,8 +2,100 @@ using Distributions
 using DataStructures
 
 import Base: <, >, ==
-export FirstReaction, NextReactionHazards, NaiveSampler
+export FirstReaction, NextReactionHazards, NaiveSampler, DirectMethod
+export FixedDirect
 export NRTransition, Next, Observer
+
+include("prefixsearch.jl")
+
+"""
+Classic Direct method for exponential transitions
+"""
+type DirectMethod
+end
+
+function Next(rm::DirectMethod, process, rng)
+    total=0.0
+    cumulative=zeros(Float64, 0)
+    keys=Array{Any,1}()
+    Hazards(process, rng) do clock, now, enabled, rng2
+        total+=parameters(clock.intensity.distribution)[1]
+        push!(cumulative, total)
+        push!(keys, clock)
+    end
+
+    if total>eps(Float64)
+        chosen=searchsortedfirst(cumulative,rand(rng)*total)
+        assert(chosen<length(cumulative)+1)
+        return (Time(process)-log(rand(rng))/total, keys[chosen])
+    else
+        return (Inf, nothing)
+    end
+end
+
+Observer(fr::DirectMethod)=(hazard, time, updated, rng)->nothing
+
+
+"""
+This Direct method assumes that there are a fixed total number
+of transitions and that each clock is marked with :Index,
+numbered from 1, as an extra argument to the AddTransition!.
+"""
+type FixedDirect
+    tree::PrefixSearchTree{Float64}
+    N::Int
+    clock_index::Dict{Int, Any}
+    init::Bool
+    FixedDirect(N::Int)=new(PrefixSearchTree(Float64, N), N,
+            Dict{Int,Any}(), true)
+end
+
+function fd_indexof(kind::Array{Any,1})
+    for (symbol, value) in kind
+        if symbol==:index
+            return value
+        end
+    end
+    error("Need an index=<int> for AddTransition!")
+end
+
+
+function Next(propagator::FixedDirect, process, rng)
+    if propagator.init
+        hazards=Array{Tuple{Int, Float64}, 1}()
+        Hazards(process, rng) do clock, now, enabled, rng2
+            lambda=parameters(clock.intensity.distribution)[1]
+            index=fd_indexof(clock.kind)
+            propagator.clock_index[index]=clock
+            push!(hazards, (index, lambda))
+        end
+        Update!(propagator.tree, hazards)
+        propagator.init=false
+    end
+    total=Total(propagator.tree)
+    if total>eps(Float64)
+        (index, value)=Choose(propagator.tree, rand(rng)*total)
+        clock=propagator.clock_index[index]
+        return (Time(process)-log(rand(rng))/total, clock)
+    else
+        return (Inf, nothing)
+    end
+end
+
+function Observer(propagator::FixedDirect)
+    function fdobserve(clock, time, updated, rng)
+        if updated!=:Disabled
+            index=fd_indexof(clock.kind)
+            propagator.clock_index[index]=clock
+            lambda=parameters(clock.intensity.distribution)[1]
+            Update!(propagator.tree, [(index, lambda)])
+        else
+            index=fd_indexof(clock.kind)
+            Update!(propagator.tree, [(index, 0)])
+        end
+    end
+end
+
 
 """
 A record of a transition and the time.
@@ -212,17 +304,27 @@ type NaiveSampler
     firing_queue::MutableBinaryHeap{NRTransition,DataStructures.LessThan}
     # This maps from transition to entry in the firing queue.
     transition_entry::Dict{Any,Int}
+    disabled::Set{Any}
     init::Bool
 end
 
+
 """
 Construct a NaiveSampler.
+This doesn't require a clock that remembers integrated hazard.
+This sampler is inappropriate if any transition is either
+re-enabled after being disabled or has its distribution
+modified while enabled. It's OK if each transition fires
+only once.
+
+BUT I can't create a model where this sampler's output
+varies from First Reaction. If anyone can show me when
+this fails to work, I'd be grateful. Even the sis.jl example works.
 """
 function NaiveSampler()
     heap=mutable_binary_minheap(NRTransition)
-    @warn("SampleSemiMarkov.NaiveSampler This sampler is WRONG")
     state=Dict{Any,Int}()
-    NaiveSampler(heap, state, true)
+    NaiveSampler(heap, state, Set{Any}(), true)
 end
 
 
@@ -269,14 +371,21 @@ function NaiveObserve(propagator::NaiveSampler, clock,
             NRTransition(key, -1.))
         todelete=pop!(propagator.firing_queue)
         delete!(propagator.transition_entry, key)
+        push!(propagator.disabled, clock)
 
     elseif updated==:Enabled
+        # if haskey(propagator.disabled, clock)
+        #     error("Cannot re-enable a transition with this sampler.")
+        # end
         when_fire=Sample(clock, time, rng)
         heap_handle=push!(propagator.firing_queue,
                 NRTransition(key, when_fire))
         propagator.transition_entry[key]=heap_handle
 
     elseif updated==:Modified
+        # if haskey(propagator.disabled, clock)
+        #     error("Cannot modify a transition with this sampler.")
+        # end
         when_fire=Sample(clock, time, rng)
         heap_handle=propagator.transition_entry[key]
         update!(propagator.firing_queue, heap_handle,

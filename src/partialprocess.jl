@@ -1,5 +1,6 @@
 export Intensity, Enabled, Update!, Reset!, Sample, Putative, HazardIntegral
 export PartialProcess, Time, AddTransition!, Init, Hazards, Fire!
+export TransitionCount
 include("partialprocess_private.jl")
 
 """
@@ -60,6 +61,7 @@ end
 
 Time(pp::PartialProcess)=pp.time
 
+TransitionCount(pp::PartialProcess)=length(pp.clocks)
 
 """
 The dependencies, int_deps and fire_deps, have to be arrays of keys

@@ -88,6 +88,7 @@ function MakeProcess(N, parameters, rng)
     state[1]=1
 
     process=PartialProcess(state)
+    transition_idx=1
 
     for midx = 1:N
         hazard=RecoverIntensity(TransitionExponential(parameters[:Gamma], 0))
@@ -100,7 +101,8 @@ function MakeProcess(N, parameters, rng)
         AddTransition!(process,
             hazard, depends,
             Recover, [midx],
-            "r$midx")
+            "r$midx", index=transition_idx )
+        transition_idx+=1
 
         for sidx=1:N
             if sidx!=midx
@@ -109,7 +111,8 @@ function MakeProcess(N, parameters, rng)
                 AddTransition!(process,
                     infect, [midx, sidx],
                     Infect, [sidx],
-                    "i$midx$sidx")
+                    "i$midx$sidx", index=transition_idx)
+                transition_idx+=1
             end
         end
     end
@@ -194,13 +197,21 @@ end
 
 function MakePlots(so::SamplingObserver)
     for plot_idx in 1:length(so.measure_state)
+        fraction=length(so.measure_state[plot_idx].enter)/so.regeneration_time
+        print("Plot $plot_idx fraction $fraction\n")
         x1, y1=AsXY(so.measure_state[plot_idx], so.regeneration_cnt)
         levelplot=plot(x=x1, y=y1, Geom.line)
-        print("Plot $plot_idx\n")
         draw(PDF("level$(plot_idx).pdf", 4inch, 3inch), levelplot)
         # for print_idx = 1:length(x1)
         #     print(x1[print_idx], "\t", y1[print_idx], "\n")
         # end
+    end
+end
+
+function ShowFractions(so::SamplingObserver)
+    for plot_idx in 1:length(so.measure_state)
+        fraction=length(so.measure_state[plot_idx].enter)/so.regeneration_time
+        print("Plot $plot_idx fraction $fraction\n")
     end
 end
 
@@ -209,12 +220,14 @@ function Run()
     N=3
     parameters=Dict(:Gamma =>1.0, :Beta => 1.0)
     process, state=MakeProcess(N, parameters, rng)
-    observer=SamplingObserver(N, 1000)
+    observer=SamplingObserver(N, 100000)
+    # sampler=FixedDirect(TransitionCount(process))
     sampler=NextReactionHazards()
 
     RunSimulation(process, sampler, Observer(observer), rng)
 
-    MakePlots(observer)
+    # MakePlots(observer)
+    ShowFractions(observer)
 end
 
 Run()
