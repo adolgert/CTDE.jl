@@ -66,8 +66,8 @@ The dependencies, int_deps and fire_deps, have to be arrays of keys
 into the state.
 """
 function AddTransition!(pp::PartialProcess, intensity::Intensity,
-		int_deps, firing::Function, fire_deps, name)
-	clock=Clock(intensity, firing, name)
+		int_deps, firing::Function, fire_deps, name; sampler_args...)
+	clock=Clock(intensity, firing, name, sampler_args)
 	push!(pp.clocks, clock)
 	AddIntensity!(pp.dependency_graph, clock, int_deps)
 	AddFiring!(pp.dependency_graph, clock, fire_deps)

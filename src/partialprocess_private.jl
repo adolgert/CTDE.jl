@@ -6,9 +6,10 @@ type Clock
 	firing
 	last_modification_time::Float64
 	integrated_hazard::Float64
-	name
+	name # A name assigned by the client API.
+	sampler_args # classification of this clock for the sampler.
 	Clock(intensity, firing, name)=new(intensity, firing,
-		0.0, 0.0, name)
+		0.0, 0.0, name, sampler_args)
 end
 
 show(io::IO, c::Clock)=show(io, c.name)
