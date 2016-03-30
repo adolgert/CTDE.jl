@@ -84,14 +84,14 @@ end
 
 function Observer(propagator::FixedDirect)
     function fdobserve(clock, time, updated, rng)
-        if updated!=:Disabled
+        if updated!=:Disabled && updated!=:Fired
             index=fd_indexof(clock.kind)
             propagator.clock_index[index]=clock
             lambda=parameters(clock.intensity.distribution)[1]
-            Update!(propagator.tree, [(index, lambda)])
+            Update!(propagator.tree, index, lambda)
         else
             index=fd_indexof(clock.kind)
-            Update!(propagator.tree, [(index, 0)])
+            Update!(propagator.tree, index, 0.0)
         end
     end
 end

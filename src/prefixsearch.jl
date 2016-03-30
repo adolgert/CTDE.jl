@@ -84,6 +84,10 @@ function Update!(pst::PrefixSearchTree, pairs)
     end
 end
 
+function Update!{T}(pst::PrefixSearchTree{T}, index::Int, value::T)
+    Update!(pst, [(index, value)])
+end
+
 # Private
 function CalculatePrefix(pst::PrefixSearchTree)
 	for d = range(pst.depth-2, -1, pst.depth-1)

@@ -20,13 +20,13 @@ function Infect(state, who)
 end
 
 type RecoverIntensity <: Intensity
-    distribution::TransitionExponential
+    distribution::TransitionDistribution
     enabled::Bool
     RecoverIntensity(dist)=new(dist, false)
 end
 
 type InfectIntensity <: Intensity
-    distribution::TransitionExponential
+    distribution::TransitionDistribution
     enabled::Bool
     InfectIntensity(dist)=new(dist, false)
 end
@@ -48,7 +48,7 @@ function Update!(intensity::RecoverIntensity, time, state, who, others...)
     enabled=(enabled && found_nonzero)
     if enabled!=intensity.enabled
         if enabled
-            intensity.distribution.enabling_time=time
+            EnablingTime!(intensity.distribution, time)
             modified=:Enabled
         else
             modified=:Disabled
@@ -69,7 +69,7 @@ function Update!(intensity::InfectIntensity, time, state, who, whom)
     enabled=(state[who]==1 && state[whom]==0)
     if enabled!=intensity.enabled
         if enabled
-            intensity.distribution.enabling_time=time
+            EnablingTime!(intensity.distribution, time)
             modified=:Enabled
         else
             modified=:Disabled
@@ -91,13 +91,15 @@ function MakeProcess(N, parameters, rng)
     transition_idx=1
 
     for midx = 1:N
-        hazard=RecoverIntensity(TransitionExponential(parameters[:Gamma], 0))
-        depends=[midx]
+        hazard=RecoverIntensity(TransitionExponential(parameters[:Gamma]))
+        # hazard=RecoverIntensity(TransitionWeibull(parameters[:Gamma], 2,0))
+        depends=[midx] 
         for dep_idx=1:N
             if dep_idx!=midx
                 push!(depends, dep_idx)
             end
         end
+        # We add the index=transition_idx only for Direct methods.
         AddTransition!(process,
             hazard, depends,
             Recover, [midx],
@@ -107,7 +109,8 @@ function MakeProcess(N, parameters, rng)
         for sidx=1:N
             if sidx!=midx
                 infect=InfectIntensity(
-                        TransitionExponential(parameters[:Beta], 0))
+                        TransitionExponential(parameters[:Beta]))
+                        #TransitionWeibull(parameters[:Beta], 1.5, 0))
                 AddTransition!(process,
                     infect, [midx, sidx],
                     Infect, [sidx],
@@ -220,14 +223,16 @@ function Run()
     N=3
     parameters=Dict(:Gamma =>1.0, :Beta => 1.0)
     process, state=MakeProcess(N, parameters, rng)
-    observer=SamplingObserver(N, 100000)
-    # sampler=FixedDirect(TransitionCount(process))
-    sampler=NextReactionHazards()
+    observer=SamplingObserver(N, 1000000)
+    sampler=FixedDirect(TransitionCount(process))
+    # sampler=NaiveSampler()
+    # sampler=NextReactionHazards()
+    # sampler=FirstReaction()
 
     RunSimulation(process, sampler, Observer(observer), rng)
 
-    # MakePlots(observer)
-    ShowFractions(observer)
+    MakePlots(observer)
+    # ShowFractions(observer)
 end
 
 Run()

@@ -6,7 +6,7 @@ import Base: rand, push!, isless, length
 export TransitionDistribution, WrappedDistribution, TransitionExponential
 export TransitionWeibull, TransitionGamma, TransitionLogLogistic
 export rand, test, hazard_integral, implicit_hazard_integral, cdf
-export parameters, quantile
+export parameters, quantile, EnablingTime!
 export EmpiricalDistribution, push!, build!
 export NelsonAalenDistribution, multiple_measures
 
@@ -107,8 +107,16 @@ function TransitionExponential(rate::Real, enabling_time::Real)
     TransitionExponential(dist, enabling_time)
 end
 
+function TransitionExponential(rate::Real)
+    TransitionExponential(rate, 0.0)
+end
+
 parameters(d::TransitionExponential)=[1.0/scale(d.relative_distribution),
         d.enabling_time]
+        
+function EnablingTime!(d::TransitionExponential, t::Float64)
+    d.enabling_time=t
+end
 
 function rand(distribution::TransitionExponential, now::Float64, rng)
     # We store the distribution for this call. Doing the inverse with
@@ -155,10 +163,18 @@ F(T)=1-exp(-((T-Te)/lambda)^k)
 type TransitionWeibull <: TransitionDistribution
     parameters::Array{Float64,1}
 end
+
+function TransitionWeibull(lambda, k)
+    TransitionWeibull([lambda, k, 0])
+end
+
 function TransitionWeibull(lambda, k, enabling_time)
     TransitionWeibull([lambda, k, enabling_time])
 end
 parameters(tw::TransitionWeibull)=tw.parameters
+function EnablingTime!(tw::TransitionWeibull, t::Float64)
+    tw.parameters[3]=t
+end
 
 function rand(dist::TransitionWeibull, now::Float64, rng::MersenneTwister)
     (λ, k, tₑ)=dist.parameters
