@@ -2,9 +2,14 @@ CTDE
 ===========
 
 Continuous-time, stochastic discrete event simulation.
-This is classical Gillespie algorithm for time-dependent hazards, updated according to recent work by Anderson and Kurtz.
+An exact stochastic simulation algorithm for time-dependent hazard rates.
 
-[Documentation](https://github.com/adolgert/CTDE.jl/wiki/Continuous-Time-Discrete-Event-Module-for-Julia) is on the wiki.
+* **Stochastic**&mdash;Uses a random number generator to create a sequence of events whose probability distribution is well-defined but whose values change each time it is run.
+* ***Continuous time**&mdashThere isn't a clock-tick to the simulation, so events happen at the rate with which they are prescribed to happen. No two events happen at the same time. No events happen immediately after another event.
+* Gillespie-type algorithm&mdash;Rates for transitions are specified by hazard rates, also known as propensities.
+* Non-constant hazard rates&mdashMost Gillespie-type simulations specify each reaction with an exponential distribution, but these simulations can use Weibull, Gamma, or other distributions, including estimators of distributions measured in the field. They still fire correctly, according to Gillespie's algorithm.
+
+[Documentation](https://github.com/adolgert/CTDE.jl/wiki/Continuous-Time-Discrete-Event-Module-for-Julia)
 
 Drew Dolgert, ajd27@cornell.edu
 Contact me with any questions.

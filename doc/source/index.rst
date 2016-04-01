@@ -1,15 +1,21 @@
 .. CTDE documentation master file, created by
-   sphinx-quickstart on Fri Nov 21 15:04:11 2014.
+   sphinx-quickstart on Thu Mar 31 20:57:08 2016.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to CTDE's documentation!
-================================
+Continuous Time Discrete Event (CTDE)
+=====================================
 
 Contents:
 
 .. toctree::
    :maxdepth: 2
+
+   intro
+   background
+   programming
+   examples
+   references
 
 
 
