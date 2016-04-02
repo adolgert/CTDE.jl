@@ -117,7 +117,7 @@ Implementing an intensity is simpler, thanks to the helper methods.
         modified
     end
 
-In general, the intensity can depend on any state since it last fired or the start of the simulation. In practice, an intensity will examine the state to create parameters for the distribution.
+In general, the intensity can depend on any state since it last fired or the start of the simulation. In practice, an intensity will examine the state to create parameters for the distribution. The `WrappedDistribution` is a good example of the interface distributions support.
 
 Transition Distributions
 --------------------------
@@ -128,9 +128,15 @@ distributions in Julia's `Distributions` module.
 
     This **abstract** class is a base class for the continuous univariate distributions used by intensities.
 
+WrappedDistribution
+^^^^^^^^^^^^^^^^^^^^^^^^^
 .. class:: WrappedDistribution
 
    This class uses the available distributions in the `Distributions` package to meet the API needed by the simulation. It's likely less efficient and possibly numerically inaccurate for some distributions, but here goes. Its members are `relative_distribution` and `enabling_time`.
+
+.. function:: WrappedDistribution(dist::Distributions.ContinuousUnivariateDistribution, enabling_time::Float64)
+
+    The constructor. Pass in a distribution from the Distributions package.
 
 .. function:: Sample(distribution::WrappedDistribution, now::Float64,
         rng::MersenneTwister)
@@ -141,6 +147,88 @@ distributions in Julia's `Distributions` module.
 
     This integrates the hazard from time `t1` to time `t2` using
     `logccdf(dist, t1-te)-logccdf(dist, t2-te)` where `te` is the enabling time.
+
+.. function:: ImplicitHazardIntegral(dist::WrappedDistribution, cumulative_hazard::Float64, when::Float64)
+
+    This is the inverse of the hazard integral, so
+    `ImplicitHazardIntegral(dist, HazardIntegral(dist, t1, t2), t1)=t2`.
+
+.. function:: EnablingTime(dist::WrappedDistribution)
+
+   Return the enabling time. It's a common parameter of all of these distributions.
+
+.. function:: EnablingTime!(dist::WrappedDistribution, time::Float64)
+
+   Set the enabling time.
+
+.. function:: Parameters(dist::WrappedDistribution)
+
+    This returns the parameters for the distribution. The exact set depends on the underlying distribution.
+
+Exponential
+^^^^^^^^^^^^^^^^^
+
+.. function:: TransitionExponential(rate::Real, enabling_time::Real)
+
+   The rate is the hazard rate, not a scale.
+
+Weibull
+^^^^^^^^^^^^^^
+.. function:: TransitionWeibull(scale::Float64, k::Float64)
+
+    The scale is a scale. k is the exponent. F(T)=1-exp(-((T-Te)/lambda)^k)
+
+Gamma
+^^^^^^^^^^^^^^^^
+.. function:: TransitionGamma(alpha, beta, enabling_time)
+
+    alpha is the shape parameter, beta the inverse scale parameter, also called a rate parameter. pdf=(β^α/Γ(α))x^(α-1) e^(-βx)
+
+LogLogistic
+^^^^^^^^^^^^^^^^^^^^
+.. function:: TransitionLogLogistic(alpha, beta)
+
+   F(t)=1/(1 + ((t-te)/α)^(-β))
+
+NelsonAalen
+^^^^^^^^^^^^^^^^
+.. class:: NelsonAalenDistribution
+
+    Given a list of times the distribution either fired or was right-censored, meaning it failed to fire, this constructs an estimator of the distribution that can be sampled.
+
+    Because each transition in the process will either fire or be interrupted, this estimator can be used to ask whether the firing of each transition matches the expected distribution.
+
+.. function:: cdf(dist::NelsonAalenDistribution, bypoint::Int)
+
+Empirical
+^^^^^^^^^^^^^
+.. class:: EmpiricalDistribution
+
+    This class estimates a distribution given samples of the times at which that distribution fired. First make the object and then use `push!` to add values. Finally, call `build!` before sampling from it.
+    This is useful for testing distributions.
+
+.. function:: EmpiricalDistribution()
+
+    Constructor.
+
+.. function:: push!(ed::EmpiricalDistribution, value::Float64)
+
+   Add a sample to the list.
+
+.. function:: build!(ed::EmpiricalDistribution)
+
+   Internally, it needs to sort the list of samples.
+
+.. function:: mean(ed::EmpiricalDistribution)
+
+.. function:: variance(ed::EmpiricalDistribution)
+
+
+.. function:: kolmogorov_smirnov_statistic(ed::EmpiricalDistribution, other)
+
+    The `other` is a distrubition for which `cdf` is defined. This returns two values, the maximum difference between the two distributions and whether that maximum difference meets the 0.05 confidence interval for the hypothesis that they are the same distribution.
+
+
 
 Firing Function
 -----------------
