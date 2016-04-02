@@ -6,12 +6,16 @@
 Continuous Time Discrete Event (CTDE)
 =====================================
 
+A Julia library for stochastic simulation in continuous-time
+with time-dependent hazard rates.
+
 Contents:
 
 .. toctree::
    :maxdepth: 2
 
    intro
+   install
    background
    programming
    examples
