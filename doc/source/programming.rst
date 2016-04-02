@@ -168,27 +168,33 @@ WrappedDistribution
 Exponential
 ^^^^^^^^^^^^^^^^^
 
-.. function:: TransitionExponential(rate::Real, enabling_time::Real)
+.. function:: TransitionExponential(λ::Real, enabling_time::Real)
 
-   The rate is the hazard rate, not a scale.
+   The rate, λ, is the hazard rate, not a scale.
+
+   .. math:: F(T)=1-exp\left[-\lambda(T-Te)\right]
 
 Weibull
 ^^^^^^^^^^^^^^
-.. function:: TransitionWeibull(scale::Float64, k::Float64)
+.. function:: TransitionWeibull(θ::Float64, k::Float64)
 
-    The scale is a scale. k is the exponent. F(T)=1-exp(-((T-Te)/lambda)^k)
+    The scale is :math:`\theta`. :math:`k` is the exponent.
+
+    .. math:: F(T)=1-exp\left[-\left(\frac{T-Te}{\theta}\right)^k\right]
 
 Gamma
 ^^^^^^^^^^^^^^^^
-.. function:: TransitionGamma(alpha, beta, enabling_time)
+.. function:: TransitionGamma(α, β, enabling_time)
 
-    alpha is the shape parameter, beta the inverse scale parameter, also called a rate parameter. pdf=(β^α/Γ(α))x^(α-1) e^(-βx)
+    α is the shape parameter, β the inverse scale parameter, also called a rate parameter.
+
+    .. math:: f(t)=\frac{\beta^\alpha}{\Gamma(\alpha)}x^{\alpha-1} e^{-\beta x}
 
 LogLogistic
 ^^^^^^^^^^^^^^^^^^^^
-.. function:: TransitionLogLogistic(alpha, beta)
+.. function:: TransitionLogLogistic(α, β)
 
-   F(t)=1/(1 + ((t-te)/α)^(-β))
+   .. math:: F(t)=\left[1 + \left(\frac{t-t_e}{\alpha}\right)^{-\beta}\right]^{-1}
 
 NelsonAalen
 ^^^^^^^^^^^^^^^^
