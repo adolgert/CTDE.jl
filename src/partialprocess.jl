@@ -26,6 +26,8 @@ function Reset!(intensity::Intensity, time, state, keys...)
 	Update!(intensity, time, state, keys...)
 end
 
+Distribution(intensity::Intensity)=intensity.distribution
+
 """
 If the intensity defines a distribution member, this will do sampling.
 """
