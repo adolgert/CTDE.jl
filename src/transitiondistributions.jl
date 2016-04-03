@@ -9,6 +9,7 @@ export rand, test, hazard_integral, implicit_hazard_integral, cdf
 export parameters, quantile, EnablingTime!
 export EmpiricalDistribution, push!, build!
 export NelsonAalenDistribution, multiple_measures
+export UniformDistribution, DiracDistribution
 
 """
 These are the distributions of stochastic processes in absolute time.
@@ -18,6 +19,7 @@ time with the assumption that they have not fired up until
 some time called "now."
 """
 abstract TransitionDistribution
+
 
 """
 A `WrappedDistribution` combines a `ContinuousUnivariateDistribution`
@@ -32,9 +34,11 @@ type WrappedDistribution <: TransitionDistribution
     WrappedDistribution(d, e)=new(d, e)
 end
 
+
 function Parameters(distribution::WrappedDistribution)
     params(distribution.relative_distribution)
 end
+
 
 function Parameters!(distribution, params_list)
     # Use the type of the wrapped distribution, which is immutable,
@@ -43,9 +47,11 @@ function Parameters!(distribution, params_list)
     distribution.relative_distribution=dist_type(params_list...)
 end
 
+
 function EnablingTime!(distribution::WrappedDistribution, Te::Float64)
     distribution.enabling_time=Te
 end
+
 
 """
 Given a distribution F
@@ -56,6 +62,7 @@ function Sample(distribution::WrappedDistribution, now::Float64,
         rng::MersenneTwister)
     quantile(distribution, now, rand(rng))
 end
+
 
 """
 Given a distribution F
@@ -69,6 +76,7 @@ function Quantile(distribution::WrappedDistribution, t0::Float64,
         U+(1-U)*cdf(distribution.relative_distribution, t0-te))
 end
 
+
 """
 Cumulative distribution function.
 The current time of the system is "now".
@@ -79,6 +87,7 @@ function CumulativeDistribution(dist::WrappedDistribution, when::Float64, now::F
     tte=cdf(dist.relative_distribution, when-dist.enabling_time)
     (tte-t0te)/(1-t0te)
 end
+
 
 """
 Given a hazard, the integral of that hazard over a time.
@@ -92,6 +101,7 @@ function HazardIntegral(dist::WrappedDistribution, t1, t2)
     te=dist.enabling_time
     logccdf(rel, t1-te)-logccdf(rel, t2-te)
 end
+
 
 """
 This is the inverse of the hazard integral. At what time
@@ -107,6 +117,8 @@ function ImplicitHazardIntegral(dist::WrappedDistribution, xa, t0)
 end
 
 
+
+
 """
 An exponential distribution with an enabling time. No,
 it doesn't use the enabling time, but it has one
@@ -117,26 +129,32 @@ type TransitionExponential <: TransitionDistribution
     enabling_time::Float64
 end
 
+
 function TransitionExponential(rate::Real, enabling_time::Real)
     dist=Distributions.Exponential(1.0/rate)
     TransitionExponential(dist, enabling_time)
 end
 
+
 function TransitionExponential(rate::Real)
     TransitionExponential(rate, 0.0)
 end
 
+
 Parameters(d::TransitionExponential)=[1.0/scale(d.relative_distribution),
         d.enabling_time]
+
 
 function Parameters!(d::TransitionExponential, rate::Real, enabling_time::Real)
     d.dist=Distributions.Exponential(1.0/rate)
     d.enabling_time=enabling_time
 end
 
+
 function EnablingTime!(d::TransitionExponential, t::Float64)
     d.enabling_time=t
 end
+
 
 function Sample(distribution::TransitionExponential, now::Float64, rng)
     # We store the distribution for this call. Doing the inverse with
@@ -146,20 +164,24 @@ function Sample(distribution::TransitionExponential, now::Float64, rng)
             rand(rng))
 end
 
+
 function HazardIntegral(dist::TransitionExponential, start, finish)
     @assert(finish>=start)
     (finish-start)/scale(dist.relative_distribution)
 end
 
+
 function CumulativeDistribution(dist::TransitionExponential, when, now)
     1-exp(-hazard_integral(dist, now, when))
 end
+
 
 function ImplicitHazardIntegral(dist::TransitionDistribution,
         cumulative_hazard, current_time)
     @assert(cumulative_hazard>=0)
     current_time+cumulative_hazard*scale(dist.relative_distribution)
 end
+
 
 function test(TransitionExponential)
     rng=MersenneTwister()
@@ -186,13 +208,16 @@ type TransitionWeibull <: TransitionDistribution
     parameters::Array{Float64,1}
 end
 
+
 function TransitionWeibull(lambda, k)
     TransitionWeibull([lambda, k, 0])
 end
 
+
 function TransitionWeibull(lambda, k, enabling_time)
     TransitionWeibull([lambda, k, enabling_time])
 end
+
 
 Parameters(tw::TransitionWeibull)=tw.parameters
 function Parameters!(tw::TransitionWeibull, λ, k, Te)
@@ -201,9 +226,11 @@ function Parameters!(tw::TransitionWeibull, λ, k, Te)
     parameters[3]=Te
 end
 
+
 function EnablingTime!(tw::TransitionWeibull, t::Float64)
     tw.parameters[3]=t
 end
+
 
 function Sample(dist::TransitionWeibull, now::Float64, rng::MersenneTwister)
     (λ, k, tₑ)=dist.parameters
@@ -218,6 +245,7 @@ function Sample(dist::TransitionWeibull, now::Float64, rng::MersenneTwister)
     now+value
 end
 
+
 function HazardIntegral(dist::TransitionWeibull, last, now)
     (λ, k, tₑ)=dist.parameters
     if now-tₑ>eps(Float64)
@@ -227,9 +255,11 @@ function HazardIntegral(dist::TransitionWeibull, last, now)
     end
 end
 
+
 function CumulativeDistribution(dist::TransitionWeibull, when, now)
     1-exp(-hazard_integral(dist, now, when))
 end
+
 
 function ImplicitHazardIntegral(dist::TransitionWeibull,
         cumulative_hazard, now)
@@ -241,6 +271,7 @@ function ImplicitHazardIntegral(dist::TransitionWeibull,
         return tₑ + λ*(cumulative_hazard)^(1.0/k)
     end
 end
+
 
 function test(dist::TransitionWeibull)
     rng=MersenneTwister()
@@ -282,6 +313,134 @@ function test(dist::TransitionWeibull)
     @debug("k expected ", k, " actual ", k_est,
         " diff ", abs(k-k_est))
 end
+
+
+
+"""
+The Dirac Distribution always fires at the same time after
+the enabling time. Using more than one of these in a simulation
+makes it possible for two to fire at the same time, which
+would violate requirements of the continuous-time model.
+"""
+type DiracDistribution <: TransitionDistribution
+    value::Float64
+    enabling_time::Float64
+    DiracDistribution(value, enabling_time)=new(value, enabling_time)
+end
+
+
+Parameters(dd::DiracDistribution)=[dd.value, dd.enabling_time]
+function Parameters!(dd::DiracDistribution, list)
+    dd.value=list[1]
+    dd.enabling_time=list[2]
+end
+
+
+EnablingTime(dd::DiracDistribution)=dd.enabling_time
+function EnablingTime!(dd::DiracDistribution, when::Float64)
+    dd.enabling_time=when
+end
+
+
+Sample(dd::DiracDistribution, now, rng)=dd.enabling_time+dd.value
+
+
+CumulativeDistribution(dd::DiracDistribution)=0
+
+
+function HazardIntegral(dd::DiracDistribution, t1, t2)
+    absolute_time=dd.enabling_time+dd.value
+    if t1 <= absolute_time <= t2
+        return 1.0
+    else
+        return 0
+    end
+end
+
+
+function ImplicitHazardIntegral(dd::DiracDistribution, xa, when)
+    dd.enabling_time+dd.value
+end
+
+
+
+"""
+UniformDistribution is between a time ta and a time tb,
+both relative to the enabling time.
+"""
+type UniformDistribution <: TransitionDistribution
+  ta::Float64
+  tb::Float64
+  te::Float64
+  UniformDistribution(ta, tb, te)=new(ta, tb, te)
+end
+
+
+Parameters(ud::UniformDistribution)=[ud.ta, ud.tb, ud.te]
+function Parameters!(ud::UniformDistribution, params)
+    ud.ta=params[1]
+    ud.tb=params[2]
+    ud.te=params[3]
+end
+
+
+EnablingTime(ud::UniformDistribution)=ud.te
+function EnablingTime!(ud::UniformDistribution, when::Float64)
+    ud.te=when
+end
+
+
+function Sample(ud::UniformDistribution, now, rng)
+    left=now<ud.ta ? ud.ta : now
+    ud.te+ud.tb+(ud.tb-left)*rand(rng)
+end
+
+
+function HazardIntegral(ud::UniformDistribution, t1, t2)
+    S0=1
+    if t1-ud.te > ud.ta
+        S0=1-(t1 - ud.te - ud.ta)/(ud.tb - ud.ta)
+    end
+    S1=1
+    if t2 - ud.te > ud.ta
+        S1=1-(t2 - ud.te - ud.ta)/(ud.tb - ud.ta)
+    end
+    if t2 > ud.tb + ud.te || t1 > ud.tb + ud.te
+        return Inf
+    end
+    log(S0) - log(S1)
+end
+
+
+function ImplicitHazardIntegral(ud::UniformDistribution, xa, t1)
+    if t1 - ud.te < ud.ta
+        t1=ud.ta+ud.te
+    end
+    ud.te+ud.ta+(ud.tb-ud.ta)*(1-exp(-xa)*(1-(t1-ud.te-ud.ta)/(ud.tb-ud.ta)))
+end
+
+
+function CumulativeDistribution(ud::UniformDistribution, t1, now)
+    # Let's be dumb and walk through every possibility given the
+    # assertions.
+    assert(now<=t1)
+    assert(ud.ta<ud.tb)
+
+    if now<ud.ta<ud.tb && t1<ud.ta<ud.tb
+        return 0
+    elseif now<ud.ta<ud.tb && ud.ta<t1<ud.tb
+        return (t1-ud.ta)/(ud.tb-ud.ta)
+    elseif now<ud.ta<ud.tb && ud.ta<ud.tb<t1
+        return 1
+    elseif ud.ta<now<ud.tb && ud.ta<t1<ud.tb
+        return (t1-now)/(ud.tb-now)
+    elseif ud.ta<now<ud.tb && ud.ta<ud.tb<t1
+        return 1
+    elseif ud.ta<ud.tb<now
+        error("UniformDistribution is not defined after end time.")
+    end
+end
+
 
 
 
