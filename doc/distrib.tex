@@ -304,4 +304,84 @@ and for $t_0-t_e< t_a$,
 \begin{equation}
   t'=t_e+t_a+(t_b-t_a)\left[1-e^{-x}\right]
 \end{equation}
+
+\section{Triangular Distribution}
+The cumulative distribution function for the triangular distribution
+with endpoints $a$ and $b$ and midpoint $m$ is
+\begin{eqnarray}
+  \frac{(t-a)^2}{(b-a)(m-a)} & & a\le t \le m \\
+  1-\frac{(b-t)^2}{(b-a)(b-m)} & & m<t\le b.
+\end{eqnarray}
+This makes the survival
+\begin{eqnarray}
+  1-\frac{(t-a)^2}{(b-a)(m-a)} & & a\le t \le m \\
+  \frac{(b-t)^2}{(b-a)(b-m)} & & m<t\le b.
+\end{eqnarray}
+\subsection{Simple Sample}
+The cutoff is at $t=m$, which is
+\begin{eqnarray}
+  U'&=&\frac{(m-a)^2}{(b-a)(m-a)} \\
+  &=&\frac{m-a}{b-a}
+\end{eqnarray}
+so first check whether $U$ is greater than that. Then, for $U$
+less than that,
+\begin{eqnarray}
+  t = a + \left[U(b-a)(m-a)\right]^{1/2} & & U\le U' \\
+  t = b- \left[(1-U)(b-a)(b-m)\right]^{1/2} & & U'<U \\
+\end{eqnarray}
+
+\subsection{Shifted Sample}
+If this is sampled after some time, $x$, then the thing
+we want to invert is
+\begin{equation}
+  U=\frac{F(t)-F(x)}{G(x)}
+\end{equation}
+so
+\begin{equation}
+  F(t)=UG(x)+F(x)
+\end{equation}
+which, for $a<t\le m$ and $a<x\le m$, is
+\begin{eqnarray}
+  \frac{(t-a)^2}{(b-a)(m-a)} & = & U\left[1-\frac{(x-a)^2}{(b-a)(m-a)}\right]
+  +\frac{(x-a)^2}{(b-a)(m-a)} \\
+  (t-a)^2 & = & U(b-a)(m-a)+ (1-U)(x-a)^2 \\
+  t & = & a + \left[U(b-a)(m-a)+ (1-U)(x-a)^2\right]^{1/2}
+\end{eqnarray}
+For $m<t\le b$ and $m<x\le b$, this is
+\begin{eqnarray}
+  1-\frac{(b-t)^2}{(b-a)(b-m)} & = & U\frac{(b-x)^2}{(b-a)(b-m)}+
+    1-\frac{(b-x)^2}{(b-a)(b-m)} \\
+  -(b-t)^2 & = & U(b-x)^2-(b-x)^2 \\
+  t & = & b-(b-x)\sqrt{1-U}
+\end{eqnarray}
+In the case that $m<t\le b$ and $a<x\le m$, the result is
+\begin{eqnarray}
+  1-\frac{(b-t)^2}{(b-a)(b-m)} & = & U\left[1-\frac{(x-a)^2}{(b-a)(m-a)}\right]
+   + \frac{(x-a)^2}{(b-a)(m-a)}\\
+  1-\frac{(b-t)^2}{(b-a)(b-m)} & = &U+\frac{(x-a)^2(1-U)}{(b-a)(m-a)} \\
+  \frac{(b-t)^2}{(b-a)(b-m)} & = &(1-U)-\frac{(x-a)^2(1-U)}{(b-a)(m-a)} \\
+  (b-t)^2& = &(1-U)(b-a)(b-m)-\frac{(x-a)^2(1-U)(b-m)}{(m-a)} \\
+  t & = & b-\left[(1-U)(b-a)(b-m)-\frac{(x-a)^2(1-U)(b-m)}{(m-a)}\right]^{1/2}
+\end{eqnarray}
+
+\subsection{Sampling from Quantile}
+The equation we have to solve is
+\begin{equation}
+  F(t)=1-G(t_j)(1-u)\prod_i\frac{G_i(t_i)}{G_i(t_{i+1})},
+\end{equation}
+given to us as
+\begin{equation}
+  F(t)=1-G(t_j)(1-u)\gamma,
+\end{equation}
+so, in terms of survivals, it's
+\begin{equation}
+  G(t)=G(t_j)(1-u)\gamma
+\end{equation}
+The value on the right is all known.
+If $t_j<m$, the cutoff is
+\begin{equation}
+  G'=\frac{b-m}{(b-a)(b-m)}
+\end{equation}
+Below that,
+
 \end{document}

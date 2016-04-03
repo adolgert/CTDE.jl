@@ -232,7 +232,7 @@ function Enable(propagator::NextReactionHazards, distribution,
 				" dist ", distribution)
 		end
 	else
-		firing_time, interval=MeasuredSample(distribution, now)
+		firing_time, interval=MeasuredSample(distribution, now, rng)
 		@assert(firing_time>=now)
         handle=push!(propagator.firing_queue, NRTransition(key, firing_time))
         @debug("SampleSemiMarkov.enable Adding key ", key, " interval ",

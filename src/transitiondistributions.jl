@@ -164,9 +164,9 @@ function Sample(distribution::TransitionExponential, now::Float64, rng)
             rand(rng))
 end
 
-function MeasuredSample(distribution::TransitionExponential, now::Float64, rng)
+function MeasuredSample(d::TransitionExponential, now::Float64, rng)
     u=randexp(rng)
-    value=now+u*(1.0/scale(d.dist))
+    value=now+u*scale(d.relative_distribution)
     (value, u)
 end
 
@@ -188,17 +188,18 @@ function CumulativeDistribution(dist::TransitionExponential, when, now)
 end
 
 
-function ImplicitHazardIntegral(dist::TransitionDistribution,
+function ImplicitHazardIntegral(dist::TransitionExponential,
         cumulative_hazard, current_time)
     @assert(cumulative_hazard>=0)
     current_time+cumulative_hazard*scale(dist.relative_distribution)
 end
 
 
-function Putative(dist::TransitionDistribution, when,
+function Putative(dist::TransitionExponential, when,
         interval, consumed_interval)
-    ImplicitHazardIntegral(dist, interval-consumed_interval, now)
+    ImplicitHazardIntegral(dist, interval-consumed_interval, when)
 end
+
 
 function test(TransitionExponential)
     rng=MersenneTwister()
@@ -264,7 +265,7 @@ end
 
 
 function MeasuredSample(distribution::TransitionWeibull, now::Float64, rng)
-    (λ, k, tₑ)=dist.parameters
+    (λ, k, tₑ)=distribution.parameters
     d=now-tₑ
     value=0
     mlogU=randexp(rng)
@@ -273,8 +274,7 @@ function MeasuredSample(distribution::TransitionWeibull, now::Float64, rng)
     else
         value=-d+λ*(mlogU)^(1/k)
     end
-    now+value
-    (value, mlogU)
+    (now+value, mlogU)
 end
 
 function HazardIntegral(dist::TransitionWeibull, last, now)
@@ -301,10 +301,10 @@ end
 
 
 function ImplicitHazardIntegral(dist::TransitionWeibull,
-        cumulative_hazard, now)
+        cumulative_hazard, when)
     (λ, k, tₑ)=dist.parameters
-    if now-tₑ>eps(Float64)
-        return tₑ + λ*(cumulative_hazard + ((now-tₑ)/λ)^k)^(1.0/k)
+    if when-tₑ>eps(Float64)
+        return tₑ + λ*(cumulative_hazard + ((when-tₑ)/λ)^k)^(1.0/k)
     else
         @debug("Weibull.implicit $cumulative_hazard")
         return tₑ + λ*(cumulative_hazard)^(1.0/k)
@@ -314,7 +314,7 @@ end
 
 function Putative(dist::TransitionWeibull, when,
         interval, consumed_interval)
-    ImplicitHazardIntegral(dist, interval-consumed_interval, now)
+    ImplicitHazardIntegral(dist, interval-consumed_interval, when)
 end
 
 
@@ -441,6 +441,39 @@ function Sample(ud::UniformDistribution, now, rng)
 end
 
 
+function MeasuredSample(ud::UniformDistribution, now, rng)
+    left=now<ud.ta ? ud.ta : now
+    U=rand(rng)
+    (ud.te+ud.tb+(ud.tb-left)*U, 1-U)
+end
+
+
+function Survival(ud::UniformDistribution, when::Float64)
+    if when<ud.ta
+        return 1
+    elseif when>ud.tb
+        return 0
+    else
+        return (ud.tb-when)/(ud.tb-ud.ta)
+    end
+end
+
+
+function ConsumeSample(ud::UniformDistribution, xa::Float64, start, finish)
+    if xa<0
+        xa=1
+    end
+    xa*Survival(ud, start)/Survival(ud, finish)
+end
+
+
+function Putative(dist::UniformDistribution, when,
+        interval, consumed_interval)
+    surv=interval*consumed_interval*Survival(when)
+    ud.tb-surv*(ud.tb-ud.ta)
+end
+
+
 function HazardIntegral(ud::UniformDistribution, t1, t2)
     S0=1
     if t1-ud.te > ud.ta
@@ -485,6 +518,125 @@ function CumulativeDistribution(ud::UniformDistribution, t1, now)
         error("UniformDistribution is not defined after end time.")
     end
 end
+
+
+
+
+"""
+TriangularDistribution is between a time ta and a time tb,
+with a midpoint at tm.
+All are relative to the enabling time.
+"""
+type TriangularDistribution <: TransitionDistribution
+  ta::Float64
+  tb::Float64
+  tm::Float64
+  te::Float64
+  TriangularDistribution(ta, tb, tm, te)=new(ta, tb, tm, te)
+end
+
+
+Parameters(ud::TriangularDistribution)=[ud.ta, ud.tb, ud.tm, ud.te]
+function Parameters!(ud::TriangularDistribution, params)
+    ud.ta=params[1]
+    ud.tb=params[2]
+    ud.tm=params[3]
+    ud.te=params[4]
+end
+
+
+EnablingTime(ud::TriangularDistribution)=ud.te
+function EnablingTime!(ud::TriangularDistribution, when::Float64)
+    ud.te=when
+end
+
+
+function Sample(ud::TriangularDistribution, now, rng)
+    left=now<ud.ta ? ud.ta : now
+    ud.te+ud.tb+(ud.tb-left)*rand(rng)
+end
+
+
+function MeasuredSample(ud::TriangularDistribution, now, rng)
+    left=now<ud.ta ? ud.ta : now
+    U=rand(rng)
+    (ud.te+ud.tb+(ud.tb-left)*U, 1-U)
+end
+
+
+function CumulativeDistribution(ud::TriangularDistribution, when::Float64)
+    t=when-ud.te
+    if t<ud.ta
+        return 0
+    elseif ud.ta < t <= ud.tm
+        return (t-ud.ta)^2/((ud.tb-ud.ta)*(ud.tm-ud.ta))
+    elseif ud.tm < t <= ud.tb
+        return 1- (ud.tb-t)^2/((ud.tb-ud.ta)*(ud.tb-ud.tm))
+    else # ud.tb<t
+        return 1
+    end
+end
+
+
+function Survival(ud::TriangularDistribution, when::Float64)
+    1-CumulativeDistribution(ud, when)
+end
+
+
+function ConsumeSample(ud::TriangularDistribution, xa::Float64, start, finish)
+    if xa<0
+        xa=1
+    end
+    xa*Survival(ud, start)/Survival(ud, finish)
+end
+
+
+function Putative(dist::TriangularDistribution, when,
+        interval, consumed_interval)
+    surv=interval*consumed_interval*Survival(when)
+    ud.tb-surv*(ud.tb-ud.ta)
+end
+
+
+function HazardIntegral(ud::TriangularDistribution, t1, t2)
+    S0=1
+    if t1-ud.te > ud.ta
+        S0=1-(t1 - ud.te - ud.ta)/(ud.tb - ud.ta)
+    end
+    S1=1
+    if t2 - ud.te > ud.ta
+        S1=1-(t2 - ud.te - ud.ta)/(ud.tb - ud.ta)
+    end
+    if t2 > ud.tb + ud.te || t1 > ud.tb + ud.te
+        return Inf
+    end
+    log(S0) - log(S1)
+end
+
+
+function CumulativeDistribution(ud::TriangularDistribution, t1, now)
+    # Let's be dumb and walk through every possibility given the
+    # assertions.
+    assert(now<=t1)
+    assert(ud.ta<ud.tb)
+
+    if now<ud.ta<ud.tb && t1<ud.ta<ud.tb
+        return 0
+    elseif now<ud.ta<ud.tb && ud.ta<t1<ud.tb
+        return (t1-ud.ta)/(ud.tb-ud.ta)
+    elseif now<ud.ta<ud.tb && ud.ta<ud.tb<t1
+        return 1
+    elseif ud.ta<now<ud.tb && ud.ta<t1<ud.tb
+        return (t1-now)/(ud.tb-now)
+    elseif ud.ta<now<ud.tb && ud.ta<ud.tb<t1
+        return 1
+    elseif ud.ta<ud.tb<now
+        error("UniformDistribution is not defined after end time.")
+    end
+end
+
+
+
 
 
 """
