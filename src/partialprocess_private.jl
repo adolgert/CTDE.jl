@@ -19,14 +19,14 @@ Enabled(c::Clock)=Enabled(c.intensity)
 function FireIntensity!(c::Clock, time, state, keys...)
 	@debug("Reset modification time for $(c.name)")
 	c.last_modification_time=time
-	c.integrated_hazard=0
+	c.integrated_hazard=-1
 	Reset!(c.intensity, time, state, keys...)
 end
 
 function UpdateIntensity!(c::Clock, time, state, keys)
 	if Enabled(c.intensity)
-		added=HazardIntegral(c.intensity, c.last_modification_time, time)
-		c.integrated_hazard+=added
+		c.integrated_hazard=ConsumeSample(Distribution(c.intensity),
+				c.integrated_hazard, c.last_modification_time, time)
 		@debug("Added $added to integrated hazard of $(c.name)")
 	end
 	c.last_modification_time=time
@@ -38,14 +38,12 @@ function Sample(c::Clock, when, rng)
 	Sample(c.intensity, when, rng)
 end
 
+function MeasuredSample(c::Clock, when, rng)
+	MeasuredSample(Distribution(c.intensity), when, rng)
+end
+
 function Putative(c::Clock, when, exponential_interval)
-	remaining_hazard=exponential_interval-c.integrated_hazard
-	if remaining_hazard<0
-		@debug("Putative clock $c, interval $exponential_interval, ",
-			c.integrated_hazard)
-		assert(remaining_hazard>=0)
-	end
-	Putative(c.intensity, when, remaining_hazard)
+	Putative(c.intensity, when, exponential_interval, c.integrated_hazard)
 end
 
 

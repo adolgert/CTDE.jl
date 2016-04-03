@@ -164,12 +164,24 @@ function Sample(distribution::TransitionExponential, now::Float64, rng)
             rand(rng))
 end
 
+function MeasuredSample(distribution::TransitionExponential, now::Float64, rng)
+    u=randexp(rng)
+    value=now+u*(1.0/scale(d.dist))
+    (value, u)
+end
 
 function HazardIntegral(dist::TransitionExponential, start, finish)
     @assert(finish>=start)
     (finish-start)/scale(dist.relative_distribution)
 end
 
+
+function ConsumeSample(dist::TransitionExponential, xa, start, finish)
+    if xa<0
+        xa=0
+    end
+    xa+HazardIntegral(dist, start, finish)
+end
 
 function CumulativeDistribution(dist::TransitionExponential, when, now)
     1-exp(-hazard_integral(dist, now, when))
@@ -182,6 +194,11 @@ function ImplicitHazardIntegral(dist::TransitionDistribution,
     current_time+cumulative_hazard*scale(dist.relative_distribution)
 end
 
+
+function Putative(dist::TransitionDistribution, when,
+        interval, consumed_interval)
+    ImplicitHazardIntegral(dist, interval-consumed_interval, now)
+end
 
 function test(TransitionExponential)
     rng=MersenneTwister()
@@ -246,6 +263,20 @@ function Sample(dist::TransitionWeibull, now::Float64, rng::MersenneTwister)
 end
 
 
+function MeasuredSample(distribution::TransitionWeibull, now::Float64, rng)
+    (λ, k, tₑ)=dist.parameters
+    d=now-tₑ
+    value=0
+    mlogU=randexp(rng)
+    if d>0
+        value=λ*(mlogU+(d/λ)^k)^(1/k)-d
+    else
+        value=-d+λ*(mlogU)^(1/k)
+    end
+    now+value
+    (value, mlogU)
+end
+
 function HazardIntegral(dist::TransitionWeibull, last, now)
     (λ, k, tₑ)=dist.parameters
     if now-tₑ>eps(Float64)
@@ -253,6 +284,14 @@ function HazardIntegral(dist::TransitionWeibull, last, now)
     else
         return 0::Float64
     end
+end
+
+
+function ConsumeSample(dist::TransitionWeibull, xa, start, finish)
+    if xa<0
+        xa=0
+    end
+    xa+HazardIntegral(dist, start, finish)
 end
 
 
@@ -270,6 +309,12 @@ function ImplicitHazardIntegral(dist::TransitionWeibull,
         @debug("Weibull.implicit $cumulative_hazard")
         return tₑ + λ*(cumulative_hazard)^(1.0/k)
     end
+end
+
+
+function Putative(dist::TransitionWeibull, when,
+        interval, consumed_interval)
+    ImplicitHazardIntegral(dist, interval-consumed_interval, now)
 end
 
 
@@ -442,6 +487,86 @@ function CumulativeDistribution(ud::UniformDistribution, t1, now)
 end
 
 
+"""
+Piecewise linear hazard. The hazard rate is plays connect-the-dots
+between the given times.
+Whatever is the last point is
+treated as a horizontal line to infinity.
+"""
+type PiecewiseLinearDistribution <: TransitionDistribution
+    b::Array{Float64, 1}
+    w::Array{Float64, 1}
+    te::Float64
+end
+
+function PiecewiseLinearDistribution(times, hazards, enabling_time)
+    if times[length(times)]<Inf
+        b=[times; Inf]
+        w=[hazards; w[length[w]]]
+    else
+        b=times
+        w=hazards
+    end
+    PiecewiseLinearDistribution(b, w, enabling_time)
+end
+
+Parameters(p::PiecewiseLinearDistribution)=[b, w, te]
+function Parameters!(p::PiecewiseLinearDistribution, params)
+    p.b=params[1]
+    p.w=params[2]
+    p.te=params[3]
+end
+
+
+function Sample(p::PiecewiseLinearDistribution, now, rng)
+    error("Can't sample directly yet.")
+end
+
+
+"""
+Integrate the hazard, taking into account when the uniform
+interval starts and stops.
+"""
+function HazardIntegral(p::PiecewiseLinearDistribution, t0, t1)
+    t0e=t0-p.te
+    t1e=t1-p.te
+    if t1e<p.b[1]
+        return 0
+    end
+    if t0e<b[1]
+        t0e=b[1]
+    end
+
+    total=0.0
+    for idx = 1:(length(p.b)-1)
+        if p.b[idx]<t1e
+            db=p.b[idx+1]-p.b[idx]
+            total+=0.5*db*(p.w[idx+1]+p.w[idx])
+        else
+            db=t1e-p.b[idx]
+            total+=0.5*db*(p.w[idx+1]+p.w[idx])
+            break
+        end
+    end
+    total
+end
+
+
+function ImplicitHazardIntegral(p::PiecewiseLinearDistribution, xa, t0)
+    t0e=t0-self.te
+    if t0e<b[1]
+        t0e=b[1]
+    end
+    error("Just not finished")
+    for i = 1:(length(p.b)-1)
+        if t0e>p.b[i+1]
+            continue
+        elseif t0e>=p.b[i+1]
+            continue
+        end
+    end
+    t0e
+end
 
 
 """
