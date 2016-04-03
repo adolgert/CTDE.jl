@@ -32,12 +32,27 @@ type WrappedDistribution <: TransitionDistribution
     WrappedDistribution(d, e)=new(d, e)
 end
 
+function Parameters(distribution::WrappedDistribution)
+    params(distribution.relative_distribution)
+end
+
+function Parameters!(distribution, params_list)
+    # Use the type of the wrapped distribution, which is immutable,
+    # to create a new copy using the modified parameters
+    dist_type=typeof(distribution.relative_distribution)
+    distribution.relative_distribution=dist_type(params_list...)
+end
+
+function EnablingTime!(distribution::WrappedDistribution, Te::Float64)
+    distribution.enabling_time=Te
+end
+
 """
 Given a distribution F
 P(x<=t | x>t0)=P(x<=t && x>t0) / P(x>t0).
 This is the left shift, as described by Gibson and Bruck.
 """
-function rand(distribution::WrappedDistribution, now::Float64,
+function Sample(distribution::WrappedDistribution, now::Float64,
         rng::MersenneTwister)
     quantile(distribution, now, rand(rng))
 end
@@ -47,7 +62,7 @@ Given a distribution F
 P(x<=t | x>t0)=P(x<=t && x>t0) / P(x>t0)
 U is a uniform variable between 0<U<=1
 """
-function quantile(distribution::WrappedDistribution, t0::Float64,
+function Quantile(distribution::WrappedDistribution, t0::Float64,
         U::Float64)
     te=distribution.enabling_time
     te+quantile(distribution.relative_distribution,
@@ -59,7 +74,7 @@ Cumulative distribution function.
 The current time of the system is "now".
 The cdf is being evaluated for a future time, "when".
 """
-function cdf(dist::WrappedDistribution, when::Float64, now::Float64)
+function CumulativeDistribution(dist::WrappedDistribution, when::Float64, now::Float64)
     t0te=cdf(dist.relative_distribution, now-dist.enabling_time)
     tte=cdf(dist.relative_distribution, when-dist.enabling_time)
     (tte-t0te)/(1-t0te)
@@ -71,7 +86,7 @@ int_{t0}^{t1} hazard(s, te) ds.
 The hazard is f(t)/(1-F(t)), where F is the cumulative distribution
 function and f is its derivative.
 """
-function hazard_integral(dist::WrappedDistribution, t1, t2)
+function HazardIntegral(dist::WrappedDistribution, t1, t2)
     # logccdf is log(1-cdf(d, x))
     rel=dist.relative_distribution
     te=dist.enabling_time
@@ -83,7 +98,7 @@ This is the inverse of the hazard integral. At what time
 would the cumulative hazard equal `xa`?
 xa = int_{t0}^{t} hazard(s, te) ds. Solve for t.
 """
-function implicit_hazard_integral(dist::WrappedDistribution, xa, t0)
+function ImplicitHazardIntegral(dist::WrappedDistribution, xa, t0)
     rel=dist.relative_distribution
     te=dist.enabling_time
     t=te+invlogccdf(rel, -xa+logccdf(rel, t0-te))
@@ -111,14 +126,19 @@ function TransitionExponential(rate::Real)
     TransitionExponential(rate, 0.0)
 end
 
-parameters(d::TransitionExponential)=[1.0/scale(d.relative_distribution),
+Parameters(d::TransitionExponential)=[1.0/scale(d.relative_distribution),
         d.enabling_time]
-        
+
+function Parameters!(d::TransitionExponential, rate::Real, enabling_time::Real)
+    d.dist=Distributions.Exponential(1.0/rate)
+    d.enabling_time=enabling_time
+end
+
 function EnablingTime!(d::TransitionExponential, t::Float64)
     d.enabling_time=t
 end
 
-function rand(distribution::TransitionExponential, now::Float64, rng)
+function Sample(distribution::TransitionExponential, now::Float64, rng)
     # We store the distribution for this call. Doing the inverse with
     # a log() is very slow compared to the Ziggurat method, which should
     # be available here.
@@ -126,16 +146,16 @@ function rand(distribution::TransitionExponential, now::Float64, rng)
             rand(rng))
 end
 
-function hazard_integral(dist::TransitionExponential, start, finish)
+function HazardIntegral(dist::TransitionExponential, start, finish)
     @assert(finish>=start)
     (finish-start)/scale(dist.relative_distribution)
 end
 
-function cdf(dist::TransitionExponential, when, now)
+function CumulativeDistribution(dist::TransitionExponential, when, now)
     1-exp(-hazard_integral(dist, now, when))
 end
 
-function implicit_hazard_integral(dist::TransitionDistribution,
+function ImplicitHazardIntegral(dist::TransitionDistribution,
         cumulative_hazard, current_time)
     @assert(cumulative_hazard>=0)
     current_time+cumulative_hazard*scale(dist.relative_distribution)
@@ -147,13 +167,15 @@ function test(TransitionExponential)
     dist=TransitionExponential(rate, 0.0)
     ed=EmpiricalDistribution()
     for i in 1:100000
-        push!(ed, rand(dist, 0.0, rng))
+        push!(ed, Sample(dist, 0.0, rng))
     end
     lambda_estimator=1/Base.mean(ed.samples)
     too_low=(rate<lambda_estimator*(1-1.96/sqrt(length(ed))))
     too_high=(rate>lambda_estimator*(1+1.96/sqrt(length(ed))))
     @debug("TransitionExponential low ", too_low, " high ", too_high)
 end
+
+
 
 """
 Weibull distribution. lambda is the scale parameter and k the
@@ -171,12 +193,19 @@ end
 function TransitionWeibull(lambda, k, enabling_time)
     TransitionWeibull([lambda, k, enabling_time])
 end
-parameters(tw::TransitionWeibull)=tw.parameters
+
+Parameters(tw::TransitionWeibull)=tw.parameters
+function Parameters!(tw::TransitionWeibull, λ, k, Te)
+    parameters[1]=λ
+    parameters[2]=k
+    parameters[3]=Te
+end
+
 function EnablingTime!(tw::TransitionWeibull, t::Float64)
     tw.parameters[3]=t
 end
 
-function rand(dist::TransitionWeibull, now::Float64, rng::MersenneTwister)
+function Sample(dist::TransitionWeibull, now::Float64, rng::MersenneTwister)
     (λ, k, tₑ)=dist.parameters
     d=now-tₑ
     value=0
@@ -189,7 +218,7 @@ function rand(dist::TransitionWeibull, now::Float64, rng::MersenneTwister)
     now+value
 end
 
-function hazard_integral(dist::TransitionWeibull, last, now)
+function HazardIntegral(dist::TransitionWeibull, last, now)
     (λ, k, tₑ)=dist.parameters
     if now-tₑ>eps(Float64)
         return ((now-tₑ)/λ)^k - ((last-tₑ)/λ)^k
@@ -198,11 +227,11 @@ function hazard_integral(dist::TransitionWeibull, last, now)
     end
 end
 
-function cdf(dist::TransitionWeibull, when, now)
+function CumulativeDistribution(dist::TransitionWeibull, when, now)
     1-exp(-hazard_integral(dist, now, when))
 end
 
-function implicit_hazard_integral(dist::TransitionWeibull,
+function ImplicitHazardIntegral(dist::TransitionWeibull,
         cumulative_hazard, now)
     (λ, k, tₑ)=dist.parameters
     if now-tₑ>eps(Float64)
@@ -218,7 +247,7 @@ function test(dist::TransitionWeibull)
     (λ, k, tₑ)=dist.parameters
     ed=EmpiricalDistribution()
     for i in 1:10000
-        push!(ed, rand(dist, 0.0, rng))
+        push!(ed, Sample(dist, 0.0, rng))
     end
     expected_mean=λ*gamma(1+1/k)
     actual_mean=mean(ed)
@@ -254,6 +283,8 @@ function test(dist::TransitionWeibull)
         " diff ", abs(k-k_est))
 end
 
+
+
 """
 A Gamma distribution.
 α - shape parameter
@@ -273,6 +304,7 @@ type LogLogistic <: Distributions.ContinuousUnivariateDistribution
     alpha::Float64
     beta::Float64
 end
+
 
 function rand(d::LogLogistic, rng::MersenneTwister)
     quantile(d, rand(rng))
@@ -302,6 +334,7 @@ end
 function TransitionLogLogistic(a::Float64, b::Float64, t::Float64)
     WrappedDistribution(LogLogistic(a,b), t)
 end
+
 
 """
 An empirical distribution is an estimator of a distribution

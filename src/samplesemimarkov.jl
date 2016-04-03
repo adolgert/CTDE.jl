@@ -19,7 +19,7 @@ function Next(rm::DirectMethod, process, rng)
     cumulative=zeros(Float64, 0)
     keys=Array{Any,1}()
     Hazards(process, rng) do clock, now, enabled, rng2
-        total+=parameters(clock.intensity.distribution)[1]
+        total+=Parameters(clock.intensity.distribution)[1]
         push!(cumulative, total)
         push!(keys, clock)
     end
@@ -64,7 +64,7 @@ function Next(propagator::FixedDirect, process, rng)
     if propagator.init
         hazards=Array{Tuple{Int, Float64}, 1}()
         Hazards(process, rng) do clock, now, enabled, rng2
-            lambda=parameters(clock.intensity.distribution)[1]
+            lambda=Parameters(clock.intensity.distribution)[1]
             index=fd_indexof(clock.kind)
             propagator.clock_index[index]=clock
             push!(hazards, (index, lambda))
@@ -87,7 +87,7 @@ function Observer(propagator::FixedDirect)
         if updated!=:Disabled && updated!=:Fired
             index=fd_indexof(clock.kind)
             propagator.clock_index[index]=clock
-            lambda=parameters(clock.intensity.distribution)[1]
+            lambda=Parameters(clock.intensity.distribution)[1]
             Update!(propagator.tree, index, lambda)
         else
             index=fd_indexof(clock.kind)
