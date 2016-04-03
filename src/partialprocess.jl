@@ -36,8 +36,8 @@ Sample(intensity::Intensity, when, rng)=Sample(intensity.distribution, when, rng
 """
 If the intensity defines a distribution member, this will do sampling.
 """
-function Putative(intensity::Intensity, when, exponential_interval)
-	ImplicitHazardIntegral(intensity.distribution, exponential_interval, when)
+function Putative(intensity::Intensity, when, exponential_interval, used)
+	Putative(intensity.distribution, when, exponential_interval, used)
 end
 
 """
