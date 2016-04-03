@@ -29,13 +29,13 @@ end
 """
 If the intensity defines a distribution member, this will do sampling.
 """
-Sample(intensity::Intensity, when, rng)=rand(intensity.distribution, when, rng)
+Sample(intensity::Intensity, when, rng)=Sample(intensity.distribution, when, rng)
 
 """
 If the intensity defines a distribution member, this will do sampling.
 """
 function Putative(intensity::Intensity, when, exponential_interval)
-	implicit_hazard_integral(intensity.distribution, exponential_interval, when)
+	ImplicitHazardIntegral(intensity.distribution, exponential_interval, when)
 end
 
 """
@@ -43,7 +43,7 @@ If the intensity defines a distribution member, this will do the
 hazard integral.
 """
 function HazardIntegral(intensity::Intensity, time0, time1)
-	hazard_integral(intensity.distribution, time0, time1)
+	HazardIntegral(intensity.distribution, time0, time1)
 end
 
 
