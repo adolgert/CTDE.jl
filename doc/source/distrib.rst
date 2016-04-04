@@ -233,7 +233,7 @@ Let's call the running product on the right :math:`\delta`,
 
 .. math::
 
-   \delta=\frac{G_i(t_i)}{G_i(t_{i+1})}
+   \delta=\prod_i^j \frac{G_i(t_i)}{G_i(t_{i+1})}
 
 Then the algorithm requires three operations
 
@@ -255,6 +255,40 @@ Then the algorithm requires three operations
 As you can see by comparison with the hazards version, it's simple
 to write the algorithm to accommodate either method of sampling.
 Therefore, each distribution can choose which interface to support.
+
+
+
+Testing Distributions
+========================
+
+EmpiricalDistribution
+-------------------------
+The type `EmpiricalDistribution` will estimate the mean and
+variance of a distribution, given samples from it.
+More importantly, it can compare those samples with a given
+functional form of a distribution using the Kolmogorov-Smirnov
+test. Often the distributions in this library have corresponding
+distributions in the main library, just with a different interface.
+
+There are ``test`` functions in after the definition of each
+distribution to do these tests.
+
+Emulating Next Reaction Sampling
+---------------------------------
+Take a ``MeasuredSample`` and then repeatedly consume the sample,
+with the same distribution, and finally use ``Putative``
+to get a value. It should agree with the original sample.
+
+
+Exact Solution to Paradigmatic Systems
+----------------------------------------
+There are some stochastic systems, such as a random walk,
+or the SIR model, for which exact results are known for
+certain distributions.
+
+The Ball Nasell example shows this. It turns out there
+is a minor error in Ball Nasell we found this way.
+The Weiss example makes a similar measurement.
 
 
 Using Julia's Distributions
