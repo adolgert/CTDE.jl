@@ -64,7 +64,7 @@ function Next(propagator::FixedDirect, process, rng)
     if propagator.init
         hazards=Array{Tuple{Int, Float64}, 1}()
         Hazards(process, rng) do clock, now, enabled, rng2
-            lambda=Parameters(clock.intensity.distribution)[1]
+            lambda=Parameters(Distribution(clock.intensity))[1]
             index=fd_indexof(clock.kind)
             propagator.clock_index[index]=clock
             push!(hazards, (index, lambda))
@@ -87,7 +87,7 @@ function Observer(propagator::FixedDirect)
         if updated!=:Disabled && updated!=:Fired
             index=fd_indexof(clock.kind)
             propagator.clock_index[index]=clock
-            lambda=Parameters(clock.intensity.distribution)[1]
+            lambda=Parameters(Distribution(clock.intensity))[1]
             Update!(propagator.tree, index, lambda)
         else
             index=fd_indexof(clock.kind)
@@ -129,7 +129,7 @@ end
 function Next(fr::FirstReaction, system, rng)
 	least=NRTransition(nothing, Inf)
 	Hazards(system, rng) do clock, now, enabled, rng2
-	  trial_time=Sample(clock, now, rng2)
+	  trial_time=Sample(clock.intensity, now, rng2)
 	  @assert(trial_time>=now)
 	  if trial_time<least.time
 	  	least=NRTransition(clock, trial_time)
@@ -209,19 +209,19 @@ function unit_hazard_interval(rng::MersenneTwister)
 end
 
 # Enable or modify a hazard.
-function Enable(propagator::NextReactionHazards, distribution,
+function Enable(propagator::NextReactionHazards, clock,
 		now, updated, rng)
-	key=distribution
+	key=clock
 	clock_started=haskey(propagator.transition_state, key)
 	if clock_started
 		record=propagator.transition_state[key]
-		when_fire=Putative(distribution, now, record.exponential_interval)
+		when_fire=Putative(clock.intensity, now, record.exponential_interval)
 
 		@assert(when_fire>=now)
 		if record.heap_handle>=0
 			@debug("SampleSemiMarkov.enable keyu ", key, " interval ",
 				record.exponential_interval, " when ", when_fire,
-				" dist ", distribution)
+				" dist ", clock)
 			update!(propagator.firing_queue, record.heap_handle,
 				NRTransition(key, when_fire))
 		else
@@ -229,14 +229,14 @@ function Enable(propagator::NextReactionHazards, distribution,
 				NRTransition(key, when_fire))
 			@debug("SampleSemiMarkov.enable keyp ", key, " interval ",
 				record.exponential_interval, " when ", when_fire,
-				" dist ", distribution)
+				" dist ", clock)
 		end
 	else
-		firing_time, interval=MeasuredSample(distribution, now, rng)
+		firing_time, interval=MeasuredSample(clock.intensity, now, rng)
 		@assert(firing_time>=now)
         handle=push!(propagator.firing_queue, NRTransition(key, firing_time))
         @debug("SampleSemiMarkov.enable Adding key ", key, " interval ",
-        	interval, " when ", firing_time, " dist ", distribution)
+        	interval, " when ", firing_time, " dist ", clock)
 		record=TransitionRecord(interval, handle)
 		propagator.transition_state[key]=record
 	end
@@ -376,7 +376,7 @@ function NaiveObserve(propagator::NaiveSampler, clock,
         # if haskey(propagator.disabled, clock)
         #     error("Cannot re-enable a transition with this sampler.")
         # end
-        when_fire=Sample(clock, time, rng)
+        when_fire=Sample(clock.intensity, time, rng)
         heap_handle=push!(propagator.firing_queue,
                 NRTransition(key, when_fire))
         propagator.transition_entry[key]=heap_handle
@@ -385,7 +385,7 @@ function NaiveObserve(propagator::NaiveSampler, clock,
         # if haskey(propagator.disabled, clock)
         #     error("Cannot modify a transition with this sampler.")
         # end
-        when_fire=Sample(clock, time, rng)
+        when_fire=Sample(clock.intensity, time, rng)
         heap_handle=propagator.transition_entry[key]
         update!(propagator.firing_queue, heap_handle,
                 NRTransition(key, when_fire))

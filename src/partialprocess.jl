@@ -1,7 +1,6 @@
 export Intensity, Enabled, Update!, Reset!, Sample, Putative, HazardIntegral
 export PartialProcess, Time, AddTransition!, Init, Hazards, Fire!
 export TransitionCount
-include("partialprocess_private.jl")
 
 """
 An `Intensity` is an abstract class for intensities, or hazard rates.
@@ -50,6 +49,57 @@ end
 
 
 """
+The IntegratedIntensity wraps an intensity in order to
+ensure that its integrated hazard is always calculated.
+"""
+type IntegratedIntensity <: Intensity
+	last_modification_time::Float64
+	integrated_hazard::Float64
+	intensity::Intensity
+	IntegratedIntensity(wrapped)=new(0.0, 0.0, wrapped)
+end
+
+Enabled(ii::IntegratedIntensity)=Enabled(ii.intensity)
+
+function FireIntensity!(ii::IntegratedIntensity, time, state, keys...)
+	@debug("Reset modification time for $(c.name)")
+	ii.last_modification_time=time
+	ii.integrated_hazard=-1
+	Reset!(ii.intensity, time, state, keys...)
+end
+
+function Update!(ii::IntegratedIntensity, time, state, keys)
+	if Enabled(ii.intensity)
+		ii.integrated_hazard=ConsumeSample(Distribution(ii.intensity),
+				ii.integrated_hazard, ii.last_modification_time, time)
+		@debug("Added $added to integrated hazard of $(c.name)")
+	end
+	ii.last_modification_time=time
+	Update!(ii.intensity, time, state, keys...)
+end
+
+function Reset!(ii::IntegratedIntensity, time, state, keys...)
+	Reset!(ii.intensity, time, state, keys...)
+end
+
+Distribution(ii::IntegratedIntensity)=Distribution(ii.intensity)
+
+function Sample(ii::IntegratedIntensity, when, rng)
+	Sample(ii.intensity, when, rng)
+end
+
+function MeasuredSample(ii::IntegratedIntensity, when, rng)
+	MeasuredSample(Distribution(ii.intensity), when, rng)
+end
+
+function Putative(ii::IntegratedIntensity, when, exponential_interval)
+	Putative(ii.intensity, when, exponential_interval, ii.integrated_hazard)
+end
+
+include("partialprocess_private.jl")
+
+
+"""
 The PartialProcess is responsible for providing enough information
 to find the next state and time of the process.
 """
@@ -71,7 +121,7 @@ into the state.
 """
 function AddTransition!(pp::PartialProcess, intensity::Intensity,
 		int_deps, firing::Function, fire_deps, name; sampler_args...)
-	clock=Clock(intensity, firing, name, sampler_args)
+	clock=Clock(IntegratedIntensity(intensity), firing, name, sampler_args)
 	push!(pp.clocks, clock)
 	AddIntensity!(pp.dependency_graph, clock, int_deps)
 	AddFiring!(pp.dependency_graph, clock, fire_deps)
@@ -80,14 +130,14 @@ end
 
 function Init(pp::PartialProcess)
 	for clock in pp.clocks
-		FireIntensity!(clock, pp.time, pp.state,
+		FireIntensity!(clock.intensity, pp.time, pp.state,
 			IntensityProject(pp.dependency_graph, clock)...)
 	end
 end
 
 function Hazards(f::Function, pp::PartialProcess, rng)
 	for clock in pp.clocks
-		if Enabled(clock)
+		if Enabled(clock.intensity)
 			f(clock, pp.time, :Enabled, rng)
 		end
 	end
@@ -98,14 +148,14 @@ function Fire!(pp::PartialProcess, time, clock, rng, intensity_observer,
 		state_observer)
 	affected_clocks, affected_places=FiringProject!(
 			pp.dependency_graph, clock, pp.state, clock.firing)
-	fireupdate=FireIntensity!(clock, time, pp.state,
+	fireupdate=FireIntensity!(clock.intensity, time, pp.state,
 			IntensityProject(pp.dependency_graph, clock)...)
 	intensity_observer(clock, time, :Fired, rng)
-	if Enabled(clock)
+	if Enabled(clock.intensity)
 		intensity_observer(clock, time, :Enabled, rng)
 	end
 	for affected in affected_clocks
-		updated=UpdateIntensity!(affected, time, pp.state,
+		updated=Update!(affected.intensity, time, pp.state,
 				IntensityProject(pp.dependency_graph, affected))
 		if updated!=:Unmodified
 			intensity_observer(affected, time, updated, rng)
