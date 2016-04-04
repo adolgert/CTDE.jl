@@ -383,7 +383,7 @@ uses a scale, which is :math:`\theta =1/\lambda`,
 
 .. literalinclude:: ../../src/exponentialdistribution.jl
    :language: julia
-   :lines: 13-16
+   :lines: 7-11
    :name: exponential-constructor-code
    :caption: exponentialdistribution.jl
 
@@ -395,7 +395,7 @@ that's much faster than inversion. The value returned by
 
 .. literalinclude:: ../../src/exponentialdistribution.jl
    :language: julia
-   :lines: 47-51
+   :lines: 31-34
    :name: exponential-measured-code
    :caption: exponentialdistribution.jl
 
@@ -403,7 +403,7 @@ The hazard integral for constant hazards is :math:`(t_2-t_1)\lambda`.
 
 .. literalinclude:: ../../src/exponentialdistribution.jl
    :language: julia
-   :lines: 53-57, 59-64
+   :lines: 36-40, 42-45
    :name: exponential-consume-code
    :caption: exponentialdistribution.jl
 
@@ -411,7 +411,7 @@ Even inverting the hazard integral is an increment with a multiplication.
 
 .. literalinclude:: ../../src/exponentialdistribution.jl
    :language: julia
-   :lines: 71-76, 78-81
+   :lines: 52-57, 59-62
    :name: exponential-putative-code
    :caption: exponentialdistribution.jl
 
@@ -433,7 +433,7 @@ The constructor uses this cdf.
 
 .. literalinclude:: ../../src/weibulldistribution.jl
    :language: julia
-   :lines: 17-19
+   :lines: 7-11
    :name: weibull-constructor-code
    :caption: weibulldistribution.jl
 
@@ -455,7 +455,7 @@ the distribution.
 
 .. literalinclude:: ../../src/weibulldistribution.jl
    :language: julia
-   :lines: 49-60
+   :lines: 40-45
    :name: weibull-sample-code
    :caption: weibulldistribution.jl
 
@@ -464,13 +464,13 @@ integrating the hazard is algebraic.
 
 .. literalinclude:: ../../src/weibulldistribution.jl
    :language: julia
-   :lines: 62-70, 72-77
+   :lines: 53-61, 63-66
    :name: weibull-consume-code
    :caption: weibulldistribution.jl
 
 .. literalinclude:: ../../src/weibulldistribution.jl
    :language: julia
-   :lines: 85-95, 97-100
+   :lines: 74-83, 85-88
    :name: weibull-putative-code
    :caption: weibulldistribution.jl
 

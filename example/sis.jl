@@ -14,71 +14,26 @@ function Recover(state, who)
     [who]
 end
 
-function Infect(state, who)
-    state[who]=1
-    [who]
-end
-
-type RecoverIntensity <: Intensity
-    distribution::TransitionDistribution
-    enabled::Bool
-    RecoverIntensity(dist)=new(dist, false)
-end
-
-type InfectIntensity <: Intensity
-    distribution::TransitionDistribution
-    enabled::Bool
-    InfectIntensity(dist)=new(dist, false)
-end
-
-function Reset!(intensity::RecoverIntensity, time, state, who, others...)
-    Update!(intensity, time, state, who, others...)
-end
-
-function Update!(intensity::RecoverIntensity, time, state, who, others...)
-    modified=:Undefined
+function RecoverParameters(time, state, who, others...)
     enabled=(state[who]==1)
     # Forbid recovery if this is the only one infectious.
     found_nonzero=false
     for nz_idx = 1:length(others)
         if state[others[nz_idx]]>0
             found_nonzero=true
+            break
         end
     end
-    enabled=(enabled && found_nonzero)
-    if enabled!=intensity.enabled
-        if enabled
-            EnablingTime!(intensity.distribution, time)
-            modified=:Enabled
-        else
-            modified=:Disabled
-        end
-        intensity.enabled=enabled
-    else
-        modified=:Unmodified
-    end
-    modified
+    (enabled && found_nonzero, [1.0, 2.0])
 end
 
-function Reset!(intensity::InfectIntensity, time, state, who, whom)
-    Update!(intensity, time, state, who, whom)
+function Infect(state, who)
+    state[who]=1
+    [who]
 end
 
-function Update!(intensity::InfectIntensity, time, state, who, whom)
-    modified=:Undefined
-    enabled=(state[who]==1 && state[whom]==0)
-    if enabled!=intensity.enabled
-        if enabled
-            EnablingTime!(intensity.distribution, time)
-            modified=:Enabled
-        else
-            modified=:Disabled
-        end
-        intensity.enabled=enabled
-    else
-        modified=:Unmodified
-    end
-    modified
+function InfectParameters(time, state, who, whom)
+    (state[who]==1 && state[whom]==0, [1.0])
 end
 
 
@@ -91,9 +46,10 @@ function MakeProcess(N, parameters, rng)
     transition_idx=1
 
     for midx = 1:N
-        hazard=RecoverIntensity(TransitionExponential(parameters[:Gamma]))
-        # hazard=RecoverIntensity(TransitionWeibull(parameters[:Gamma], 2,0))
-        depends=[midx] 
+        hazard=MemorylessIntensity(RecoverParameters,
+                TransitionWeibull(1.0, 2.0))
+                # TransitionExponential(parameters[:Gamma]))
+        depends=[midx]
         for dep_idx=1:N
             if dep_idx!=midx
                 push!(depends, dep_idx)
@@ -108,7 +64,7 @@ function MakeProcess(N, parameters, rng)
 
         for sidx=1:N
             if sidx!=midx
-                infect=InfectIntensity(
+                infect=MemorylessIntensity(InfectParameters,
                         TransitionExponential(parameters[:Beta]))
                         #TransitionWeibull(parameters[:Beta], 1.5, 0))
                 AddTransition!(process,

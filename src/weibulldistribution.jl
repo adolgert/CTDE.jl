@@ -6,35 +6,26 @@ F(T)=1-exp(-((T-Te)/lambda)^k)
 """
 type TransitionWeibull <: TransitionDistribution
     parameters::Array{Float64,1}
-end
-
-
-function TransitionWeibull(lambda, k)
-    TransitionWeibull([lambda, k, 0])
-end
-
-
-function TransitionWeibull(lambda, k, enabling_time)
-    TransitionWeibull([lambda, k, enabling_time])
+    te::Float64
+    TransitionWeibull(lambda, k)=new([lambda, k], 0.0)
 end
 
 
 Parameters(tw::TransitionWeibull)=tw.parameters
-function Parameters!(tw::TransitionWeibull, λ, k, Te)
-    parameters[1]=λ
-    parameters[2]=k
-    parameters[3]=Te
+function Parameters!(tw::TransitionWeibull, λ, k)
+    tw.parameters[1]=λ
+    tw.parameters[2]=k
 end
 
 
 function EnablingTime!(tw::TransitionWeibull, t::Float64)
-    tw.parameters[3]=t
+    tw.te=t
 end
 
 
 function Sample(dist::TransitionWeibull, now::Float64, rng::MersenneTwister)
-    (λ, k, tₑ)=dist.parameters
-    d=now-tₑ
+    (λ, k)=dist.parameters
+    d=now-dist.te
     value=0
     U=Base.rand(rng)
     if d>0
@@ -47,8 +38,8 @@ end
 
 
 function MeasuredSample(distribution::TransitionWeibull, now::Float64, rng)
-    (λ, k, tₑ)=distribution.parameters
-    d=now-tₑ
+    (λ, k)=distribution.parameters
+    d=now-distribution.te
     value=0
     mlogU=randexp(rng)
     if d>0
@@ -60,9 +51,9 @@ function MeasuredSample(distribution::TransitionWeibull, now::Float64, rng)
 end
 
 function HazardIntegral(dist::TransitionWeibull, last, now)
-    (λ, k, tₑ)=dist.parameters
-    if now-tₑ>eps(Float64)
-        return ((now-tₑ)/λ)^k - ((last-tₑ)/λ)^k
+    (λ, k)=dist.parameters
+    if now-dist.te>eps(Float64)
+        return ((now-dist.te)/λ)^k - ((last-dist.te)/λ)^k
     else
         return 0::Float64
     end
@@ -70,9 +61,7 @@ end
 
 
 function ConsumeSample(dist::TransitionWeibull, xa, start, finish)
-    if xa<0
-        xa=0
-    end
+    xa=(xa<0) ? 0 : xa
     xa+HazardIntegral(dist, start, finish)
 end
 
@@ -84,12 +73,11 @@ end
 
 function ImplicitHazardIntegral(dist::TransitionWeibull,
         cumulative_hazard, when)
-    (λ, k, tₑ)=dist.parameters
-    if when-tₑ>eps(Float64)
-        return tₑ + λ*(cumulative_hazard + ((when-tₑ)/λ)^k)^(1.0/k)
+    (λ, k)=dist.parameters
+    if when-dist.te>eps(Float64)
+        return dist.te + λ*(cumulative_hazard + ((when-dist.te)/λ)^k)^(1.0/k)
     else
-        @debug("Weibull.implicit $cumulative_hazard")
-        return tₑ + λ*(cumulative_hazard)^(1.0/k)
+        return dist.te + λ*(cumulative_hazard)^(1.0/k)
     end
 end
 
@@ -102,7 +90,7 @@ end
 
 function test(dist::TransitionWeibull)
     rng=MersenneTwister()
-    (λ, k, tₑ)=dist.parameters
+    (λ, k)=dist.parameters
     ed=EmpiricalDistribution()
     for i in 1:10000
         push!(ed, Sample(dist, 0.0, rng))

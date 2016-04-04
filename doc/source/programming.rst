@@ -84,7 +84,57 @@ An intensity says when the transition is enabled or disabled and, when it is ena
 
     integrates the current distribution for the hazard to determine at what time it will have used up an integrated hazard equal to `exponential_interval`. This is a way to sample distributions for Gibson and Bruck's Next Reaction Method or Anderson's method. This method calls `Putative(intensity.distribution)`, so a type which defines a `distribution` member doesn't need to reimpliment this method.
 
-Implementing an intensity is simpler, thanks to the helper methods.
+.. class:: MemoryIntensity
+
+    Many intensities can be defined with three quantities,
+    1) whether they are enabled given the current state, 2)
+    given that they are enabled, the current set of parameters
+    for their distribution, and 3) the particular distribution.
+    This intensity is called a *memory* intensity because
+    it sets the enabling time of the distribution when it is
+    enabled, but it doesn't change that enabling time if, when
+    the state changes, the parameters for the distribution
+    change. It *remembers* the first enabling time.
+
+.. function:: MemoryIntensity(invariant::Function, distribution)
+
+    The distribution is a TransitionDistribution. The function
+    is described just below.
+
+.. function:: invariant(time, state, keys...)
+
+    This function looks at the state, as indexed by the keys
+    and returns a tuple with two values, whether the transition
+    should be enabled, according to the current state, and,
+    if so, what are the values of the parameters for the
+    distribution of this transition. It looks like
+    ``(Bool, Array{Any,1})``.
+
+.. class:: MemorylessIntensity
+
+    Many intensities can be defined with three quantities,
+    1) whether they are enabled given the current state, 2)
+    given that they are enabled, the current set of parameters
+    for their distribution, and 3) the particular distribution.
+    This intensity is called a *memoryless* intensity because
+    it sets the enabling time of the distribution not only it is
+    enabled, but whenever a change of the state causes the
+    parameters, those returned by the invariant, to change.
+    When that happens, it *forgets* the original enabling time.
+
+For example, a simulation of susceptible-infectious-susceptible
+individuals defines a recovery intensity that ensures that
+the last infectious person never recovers. It sounds mean,
+but it helps certain long-running simulations get data.
+
+.. literalinclude:: ../../example/sis.jl
+   :language: julia
+   :lines: 12-28, 48-62
+   :name: sis-recover-code
+   :caption: sis.jl
+
+There are helper methods, defined on the abstract type Intensity,
+which reduce the amount of code required for implementation.
 
 .. code-block:: julia
 

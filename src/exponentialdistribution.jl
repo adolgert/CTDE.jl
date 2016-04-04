@@ -5,29 +5,17 @@ it doesn't use the enabling time, but it has one
 for consistency.
 """
 type TransitionExponential <: TransitionDistribution
-    relative_distribution::Distributions.Exponential # relative time
+    hazard::Float64
     enabling_time::Float64
+    TransitionExponential(rate::Real)=new(rate, 0.0)
 end
 
 
-function TransitionExponential(rate::Real, enabling_time::Real)
-    dist=Distributions.Exponential(1.0/rate)
-    TransitionExponential(dist, enabling_time)
-end
+Parameters(d::TransitionExponential)=[d.hazard]
 
 
-function TransitionExponential(rate::Real)
-    TransitionExponential(rate, 0.0)
-end
-
-
-Parameters(d::TransitionExponential)=[1.0/scale(d.relative_distribution),
-        d.enabling_time]
-
-
-function Parameters!(d::TransitionExponential, rate::Real, enabling_time::Real)
-    d.dist=Distributions.Exponential(1.0/rate)
-    d.enabling_time=enabling_time
+function Parameters!(d::TransitionExponential, rate::Real)
+    d.hazard=rate
 end
 
 
@@ -37,29 +25,22 @@ end
 
 
 function Sample(distribution::TransitionExponential, now::Float64, rng)
-    # We store the distribution for this call. Doing the inverse with
-    # a log() is very slow compared to the Ziggurat method, which should
-    # be available here.
-    now+quantile(distribution.relative_distribution,
-            rand(rng))
+    now-randexp(rng)/distribution.hazard
 end
 
 function MeasuredSample(d::TransitionExponential, now::Float64, rng)
     u=randexp(rng)
-    value=now+u*scale(d.relative_distribution)
-    (value, u)
+    (now+u/d.hazard, u)
 end
 
 function HazardIntegral(dist::TransitionExponential, start, finish)
     @assert(finish>=start)
-    (finish-start)/scale(dist.relative_distribution)
+    (finish-start)*dist.hazard
 end
 
 
 function ConsumeSample(dist::TransitionExponential, xa, start, finish)
-    if xa<0
-        xa=0
-    end
+    xa = xa<0 ? 0 : xa
     xa+HazardIntegral(dist, start, finish)
 end
 
@@ -71,7 +52,7 @@ end
 function ImplicitHazardIntegral(dist::TransitionExponential,
         cumulative_hazard, current_time)
     @assert(cumulative_hazard>=0)
-    current_time+cumulative_hazard*scale(dist.relative_distribution)
+    current_time+cumulative_hazard/dist.hazard
 end
 
 
