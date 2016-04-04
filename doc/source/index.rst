@@ -19,6 +19,7 @@ Contents:
    background
    programming
    examples
+   distrib
    references
 
 
