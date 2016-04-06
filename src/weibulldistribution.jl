@@ -88,6 +88,49 @@ function Putative(dist::TransitionWeibull, when,
 end
 
 
+"""
+Given a distribution and an EmpiricalDistribution with
+samples from it, compute a set of statistics on those samples,
+returning a dictionary where the keys are the names of
+the statistics and the entries are an array of
+[expected, estimated].
+"""
+function TestStatistics(d::TransitionWeibull, ed::EmpiricalDistribution)
+    statistic=Dict{AbstractString, Array}()
+    (λ, k)=d.parameters
+    expected_mean=λ*gamma(1+1/k)
+    actual_mean=mean(ed)
+    statistic["mean"]=[expected_mean, actual_mean]
+    statistic["variance"]=[
+        (λ^2)*(gamma(1+2/k)-gamma(1+1/k)^2),
+        variance(ed)]
+
+    min_value=min(ed)
+    mink=min_value^k
+    total=0.0
+    for i in 1:length(ed)
+        total+=ed.samples[i]^k
+    end
+    statistic["scale"]=[λ,
+        (total/length(ed)-mink)^(1/k)]
+
+
+    numerator=0.0
+    denominator=0.0
+    logsum=0.0
+    for s in ed.samples
+        numerator+=s^k*log(s) - mink*log(min_value)
+        denominator+=s^k - mink
+        logsum+=log(s)
+    end
+    k_est_inv=numerator/denominator - logsum/length(ed)
+    k_est=1.0/k_est_inv
+
+    statistic["exponent"]=[k, k_est]
+    statistic
+end
+
+
 function test(dist::TransitionWeibull)
     rng=MersenneTwister()
     (λ, k)=dist.parameters

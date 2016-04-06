@@ -20,6 +20,79 @@ some time called "now."
 """
 abstract TransitionDistribution
 
+
+"""
+An empirical distribution is an estimator of a distribution
+given a set of samples of times at which it fired.
+For this implementation, first make the `EmpiricalDistribution`.
+Then use `push!` to add values. Then call `build!` before
+sampling from it.
+"""
+type EmpiricalDistribution
+    samples::Array{Float64,1}
+    built::Bool
+    EmpiricalDistribution()=new(Array(Float64,0), false)
+end
+
+function cdf(ed::EmpiricalDistribution, which::Int)
+    (ed.samples[which], which/length(ed.samples))
+end
+
+function CDFX(ed::EmpiricalDistribution)
+    ed.samples
+end
+
+function CDFY(ed::EmpiricalDistribution)
+    y=Array{Int,1}(1:length(ed.samples))
+    y/length(ed.samples)
+end
+
+function build!(ed::EmpiricalDistribution)
+    if !ed.built
+        sort!(ed.samples)
+        ed.built=true
+    end
+end
+
+function push!(ed::EmpiricalDistribution, value)
+    push!(ed.samples, value)
+end
+
+length(ed::EmpiricalDistribution)=length(ed.samples)
+
+function mean(ed::EmpiricalDistribution)
+    Base.mean(ed.samples)
+end
+
+function min(ed::EmpiricalDistribution)
+    Base.minimum(ed.samples)
+end
+
+function variance(ed::EmpiricalDistribution)
+    Base.var(ed.samples)
+end
+
+"""
+This compares two distributions. It returns the
+largest difference between an `EmpiricalDistribution`
+and the `other` distribution, along with a `Bool`
+that says whether the null hypothesis, that they agree, is rejected
+at level 0.05.
+"""
+function kolmogorov_smirnov_statistic(ed::EmpiricalDistribution, other)
+    build!(ed)
+    sup_diff=0.0
+    n=length(ed.samples)
+    for i in 1:n
+        t=ed.samples[i]
+        F_empirical=i/n
+        sup_diff=max(sup_diff, abs(F_empirical-cdf(other, t)))
+    end
+    c_alpha=1.36 # 0.05 confidence interval
+    (sup_diff, sup_diff > c_alpha*sqrt(2/n))
+end
+
+
 include("wrappeddistribution.jl")
 include("exponentialdistribution.jl")
 include("weibulldistribution.jl")
@@ -434,73 +507,6 @@ function TransitionLogLogistic(a::Float64, b::Float64, t::Float64)
     WrappedDistribution(LogLogistic(a,b), t)
 end
 
-
-"""
-An empirical distribution is an estimator of a distribution
-given a set of samples of times at which it fired.
-For this implementation, first make the `EmpiricalDistribution`.
-Then use `push!` to add values. Then call `build!` before
-sampling from it.
-"""
-type EmpiricalDistribution
-    samples::Array{Float64,1}
-    built::Bool
-    EmpiricalDistribution()=new(Array(Float64,0), false)
-end
-
-function cdf(ed::EmpiricalDistribution, which::Int)
-    (ed.samples[which], which/length(ed.samples))
-end
-
-function build!(ed::EmpiricalDistribution)
-    if !ed.built
-        sort!(ed.samples)
-        ed.built=true
-    end
-end
-
-function push!(ed::EmpiricalDistribution, value)
-    push!(ed.samples, value)
-end
-
-length(ed::EmpiricalDistribution)=length(ed.samples)
-
-function mean(ed::EmpiricalDistribution)
-    Base.mean(ed.samples)
-end
-
-function min(ed::EmpiricalDistribution)
-    Base.minimum(ed.samples)
-end
-
-function variance(ed::EmpiricalDistribution)
-    m=Base.mean(ed.samples)
-    total=0.0
-    for d in ed.samples
-        total+=(m+d)^2
-    end
-    total/length(ed.samples)
-end
-
-"""
-This compares two distributions. It returns the
-largest difference between an `EmpiricalDistribution`
-and the `other` distribution, along with a `Bool`
-that says whether the null hypothesis, that they agree, is rejected
-at level 0.05.
-"""
-function kolmogorov_smirnov_statistic(ed::EmpiricalDistribution, other)
-    build!(ed)
-    sup_diff=0.0
-    n=length(ed.samples)
-    for i in 1:n
-        t=ed.samples[i]
-        F_empirical=i/n
-        sup_diff=max(sup_diff, abs(F_empirical-cdf(other, t)))
-    end
-    c_alpha=1.36 # 0.05 confidence interval
-    (sup_diff, sup_diff > c_alpha*sqrt(2/n))
-end
 
 
 """
