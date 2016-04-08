@@ -130,9 +130,13 @@ function Update!(mi::MemoryIntensity, time, state, keys...)
 		end
 		mi.enabled=enabled
 	else
-		if params!=Parameters(mi.distribution)
-			Parameters!(mi.distribution, params...)
-			modified=:Modified
+		if enabled
+			if params!=Parameters(mi.distribution)
+				Parameters!(mi.distribution, params...)
+				modified=:Modified
+			else
+				modified=:Unmodified
+			end
 		else
 			modified=:Unmodified
 		end
@@ -184,11 +188,15 @@ function Update!(mi::MemorylessIntensity, time, state, keys...)
 		end
 		mi.enabled=enabled
 	else
-		if params!=Parameters(mi.distribution)
-			Parameters!(mi.distribution, params...)
-			# This is the only line different from MemoryIntensity.
-			EnablingTime!(mi.distribution, time)
-			modified=:Modified
+		if enabled
+			if params!=Parameters(mi.distribution)
+				Parameters!(mi.distribution, params...)
+				# This is the only line different from MemoryIntensity.
+				EnablingTime!(mi.distribution, time)
+				modified=:Modified
+			else
+				modified=:Unmodified
+			end
 		else
 			modified=:Unmodified
 		end

@@ -37,6 +37,7 @@ end
 
 
 function Init(pp::PartialProcess)
+	pp.time=0.0
 	for clock in pp.clocks
 		FireIntensity!(clock.intensity, pp.time, pp.state,
 			IntensityProject(pp.dependency_graph, clock)...)

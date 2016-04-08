@@ -96,6 +96,7 @@ end
 include("wrappeddistribution.jl")
 include("exponentialdistribution.jl")
 include("weibulldistribution.jl")
+include("gammadistribution.jl")
 
 """
 The Dirac Distribution always fires at the same time after
@@ -456,19 +457,6 @@ function ImplicitHazardIntegral(p::PiecewiseLinearDistribution, xa, t0)
     t0e
 end
 
-
-"""
-A Gamma distribution.
-α - shape parameter
-β - inverse scale parameter, also called rate parameter
-
-pdf=(β^α/Γ(α))x^(α-1) e^(-βx)
-"""
-function TransitionGamma(α::Float64, β::Float64, te::Float64)
-    # The supplied version uses θ=1/β.
-    relative=Distributions.Gamma(α, 1/β)
-    WrappedDistribution(relative, te)
-end
 
 ##################################
 # F(t)=1/(1 + ((t-te)/α)^(-β))

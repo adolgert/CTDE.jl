@@ -1,3 +1,9 @@
+# This is an implementation of a model from Gorissen
+# and Vanderzande [1].
+#
+# [1] M. Gorissen and C. Vanderzande, “Ribosome Dwell Times and
+# the Protein Copy Number Distribution,” J Stat Phys, vol. 148,
+# pp. 628–636, 2012.
 
 using CTDE
 
@@ -13,7 +19,7 @@ enclose the rate parameter.
 """
 function BuildInitiateRate(params)
     function IntiateRate(time, state, who, neighbors...)
-        if state[who]==1
+        if state[who]==0
             for empty_idx = 1:length(neighbors)
                 if state[empty_idx]==1
                     return (false, [])
@@ -42,7 +48,7 @@ end
 
 function Elongate(state, start, finish)
     state[start]=0
-    state[finish]=0
+    state[finish]=1
     [start, finish]
 end
 
@@ -51,14 +57,14 @@ function BuildElongateRate(params)
     function ElongateRate(time, state, who, next)
         # The k and n used in the article are a shape and a rate,
         # not a shape and a scale.
-        (state[who]==1 && state[next]==0, [params[:n], params[:k]])
+        (state[who]==1 && state[next]==0, [params[:n], 1/params[:k]])
     end
 end
 
 
 function BuildElongateEndRate(params)
     function ElongateEndRate(time, state, who)
-        (state[who]==1, [params[:n], params[:k]])
+        (state[who]==1, [params[:n], 1/params[:k]])
     end
 end
 
@@ -67,6 +73,7 @@ function Decay(state, who)
     state[who]=0
     [who]
 end
+
 
 function BuildDecayRate(params)
     function DecayRate(time, state, who)
@@ -111,7 +118,7 @@ function MakeProcess(parameters, rng)
 
     for codon_idx = 1:(L-skip)
         elongate_rate=MemoryIntensity(BuildElongateRate(parameters),
-                TransitionWeibull(1.0, 2.0))
+                TransitionGamma(1.0, 2.0))
         AddTransition!(process,
             elongate_rate, [codon_idx, codon_idx+skip],
             Elongate, [codon_idx, codon_idx+1],
@@ -127,7 +134,7 @@ function MakeProcess(parameters, rng)
     # is at L-3, because it can be blocked by the mRNA at L.
     for codon_idx = (L-skip+1):(L-1)
         elongate_rate=MemoryIntensity(BuildElongateEndRate(parameters),
-                TransitionWeibull(1.0, 2.0))
+                TransitionGamma(1.0, 2.0))
         AddTransition!(process,
             elongate_rate, [codon_idx],
             Elongate, [codon_idx, codon_idx+1],
@@ -136,6 +143,7 @@ function MakeProcess(parameters, rng)
 
     (process, state)
 end
+
 
 type Observations
     enter::Array{Float64,1}
@@ -147,8 +155,10 @@ end
 function Observer(store::Observations)
     function Observe(state::Array{Int,1}, affected, clock_name, time::Float64)
         if clock_name=="initiate"
+            # print("initiate $time\n")
             push!(store.enter, time)
         elseif clock_name=="terminate"
+            # print("TERMINATE $time\n")
             push!(store.leave, time)
         else
             0 # ignore other stuff
@@ -157,10 +167,25 @@ function Observer(store::Observations)
     end
 end
 
+function Report(a::Dict)
+    m=maximum([k for k::Int in keys(a)])
+    for i=0:m
+        if haskey(a, i)
+           print("$i\t$(a[i])\n")
+        end
+    end
+end
+
+
+function Reset!(state)
+    state[1:length(state)]=0
+    state[length(state)]=1
+end
+
 
 function Run()
     rng=MersenneTwister(333333)
-    run_cnt=1000
+    run_cnt=100
     parameters=Dict(
         :n => 0.5,
         :k => 0.5,
@@ -173,17 +198,19 @@ function Run()
     copy_count=Dict{Int,Int}()
     process, state=MakeProcess(parameters, rng)
     for run_idx = 1:run_cnt
+        Reset!(state)
         obs=Observations()
         sampler=NextReactionHazards()
 
         RunSimulation(process, sampler, Observer(obs), rng)
+
         if haskey(copy_count, length(obs.leave))
             copy_count[length(obs.leave)]+=1
         else
             copy_count[length(obs.leave)]=1
         end
     end
-    print(copy_count)
+    Report(copy_count)
 end
 
 Run()
