@@ -159,11 +159,32 @@ function Write(obs::Observations, name)
     writedlm("$(name)leave.txt", obs.leave)
 end
 
+function Clear!(obs::Observations)
+    obs.row=Array{Int,1}()
+    obs.leave=Array{Float64,1}()
+end
+
 function FromFile(name::AbstractString)
     obs=Observations()
     obs.row=readdlm("$(name)row.txt")
     obs.leave=readdlm("$(name)leave.txt")
 end
+
+function FromFiles(name::AbstractString)
+    obs=Observations()
+    all_files=readdir()
+    for f in all_files
+        if startswith(f, name) && endswith(f, ".txt")
+            row=readdlm(f)
+            leave=readdlm(f)
+            row .+= length(obs.row)
+            obs.row=[obs.row ; row]
+            obs.leave=[obs.leave ; leave]
+        end
+    end
+    obs
+end
+
 
 function Observer(store::Observations)
     function Observe(state::Array{Int,1}, affected, clock_name, time::Float64)

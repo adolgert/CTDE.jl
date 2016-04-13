@@ -13,7 +13,7 @@ include("protein_copy_number_distribution.jl")
 
 function DecayRuns()
     rng=MersenneTwister(333333)
-    run_cnt=100000
+    run_cnt=1000
     parameters=Dict(
         :n => 0.5,
         :k => 0.5,
@@ -24,6 +24,7 @@ function DecayRuns()
         :l => 12
         )
     process, state=MakeProcess(parameters, rng)
+    start_time=now()
     obs=Observations()
     for run_idx = 1:run_cnt
         Reset!(state)
@@ -31,18 +32,19 @@ function DecayRuns()
 
         push!(obs.row, length(obs.leave)+1)
         RunSimulation(process, sampler, Observer(obs), rng)
+        if now()-start_time > Base.Dates.Minute(30)
+            Write(obs, "$(run_cnt)-$(run_idx)")
+            Clear!(obs)
+            start_time=now()
+        end
     end
-
     Write(obs, "$(run_cnt)")
-
-    #inter_times=InterDepartureWaitingTime(obs)
-    # LeavingTimeDistribution(obs)
 end
 
 
 function LongRuns()
     rng=MersenneTwister(333333)
-    run_cnt=10000
+    run_cnt=10
     parameters=Dict(
         :n => 0.5,
         :k => 0.5,
@@ -53,6 +55,7 @@ function LongRuns()
         :l => 12
         )
     process, state=MakeProcess(parameters, rng, false)
+    start_time=now()
     obs=Observations()
     for run_idx = 1:run_cnt
         Reset!(state)
@@ -60,13 +63,15 @@ function LongRuns()
 
         push!(obs.row, length(obs.leave)+1)
         RunSimulation(process, sampler, TimedObserver(obs), rng)
+        if now()-start_time > Base.Dates.Minute(30)
+            Write(obs, "long$(run_cnt)-$(run_idx)")
+            Clear!(obs)
+            start_time=now()
+        end
     end
-
     Write(obs, "long$(run_cnt)")
-
-    #inter_times=InterDepartureWaitingTime(obs)
-    # LeavingTimeDistribution(obs)
 end
+
 
 function Plot()
 	obs=FromFile("1000")
