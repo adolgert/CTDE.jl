@@ -4,7 +4,7 @@ export RunSimulation
 
 function RunSimulation(partial_process, sampler, observer, rng)
     running=true
-    Init(partial_process)
+    Init(partial_process, rng)
     steps=0
     while running
         @debug("run_steps next")

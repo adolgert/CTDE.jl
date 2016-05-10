@@ -13,13 +13,13 @@ take care of the Enabled() function.
 """
 Enabled(intensity::Intensity)=intensity.enabled
 
-Update!(intensity::Intensity, time, state, keys...)=nothing
+Update!(intensity::Intensity, rng, time, state, keys...)=nothing
 
 """
 Most intensities don't need to reset when the transition fires.
 """
-function Reset!(intensity::Intensity, time, state, keys...)
-	Update!(intensity, time, state, keys...)
+function Reset!(intensity::Intensity, rng, time, state, keys...)
+	Update!(intensity, rng, time, state, keys...)
 end
 
 Distribution(intensity::Intensity)=intensity.distribution
@@ -58,25 +58,24 @@ end
 
 Enabled(ii::IntegratedIntensity)=Enabled(ii.intensity)
 
-function FireIntensity!(ii::IntegratedIntensity, time, state, keys...)
-	@debug("Reset modification time for $(c.name)")
+function FireIntensity!(ii::IntegratedIntensity, rng, time, state, keys...)
 	ii.last_modification_time=time
-	ii.integrated_hazard=-1
-	Reset!(ii.intensity, time, state, keys...)
+	ii.integrated_hazard=-1.0
+	Reset!(ii.intensity, rng, time, state, keys...)
 end
 
-function Update!(ii::IntegratedIntensity, time, state, keys)
+function Update!(ii::IntegratedIntensity, rng, time, state, keys)
 	if Enabled(ii.intensity)
 		ii.integrated_hazard=ConsumeSample(Distribution(ii.intensity),
 				ii.integrated_hazard, ii.last_modification_time, time)
-		@debug("Added $added to integrated hazard of $(c.name)")
+		@debug("Added $added to integrated hazard")
 	end
 	ii.last_modification_time=time
-	Update!(ii.intensity, time, state, keys...)
+	Update!(ii.intensity, rng, time, state, keys...)
 end
 
-function Reset!(ii::IntegratedIntensity, time, state, keys...)
-	Reset!(ii.intensity, time, state, keys...)
+function Reset!(ii::IntegratedIntensity, rng, time, state, keys...)
+	Reset!(ii.intensity, rng, time, state, keys...)
 end
 
 Distribution(ii::IntegratedIntensity)=Distribution(ii.intensity)
@@ -109,35 +108,43 @@ end
 
 Enabled(mi::MemoryIntensity)=mi.enabled
 
-function Reset!(mi::MemoryIntensity, time, state, keys...)
+
+function Reset!(mi::MemoryIntensity, rng, time, state, keys...)
 	(mi.enabled, params)=mi.invariant(time, state, keys...)
 	if mi.enabled
-		Parameters!(mi.distribution, params...)
+		Parameters!(mi.distribution, rng, params...)
 		EnablingTime!(mi.distribution, time)
 	end
 end
 
-function Update!(mi::MemoryIntensity, time, state, keys...)
+
+function Update!(mi::MemoryIntensity, rng, time, state, keys...)
+	println("MemoryIntensity::Update!")
 	modified=:Undefined
 	(enabled, params)=mi.invariant(time, state, keys...)
 	if mi.enabled!=enabled
 		if enabled
-			Parameters!(mi.distribution, params...)
+			println("newly enabled")
+			Parameters!(mi.distribution, rng, params...)
 			EnablingTime!(mi.distribution, time)
 			modified=:Enabled
 		else
+			println("newly disabled")
 			modified=:Disabled
 		end
 		mi.enabled=enabled
 	else
 		if enabled
 			if params!=Parameters(mi.distribution)
-				Parameters!(mi.distribution, params...)
+				println("re-enabled new params")
+				Parameters!(mi.distribution, rng, params...)
 				modified=:Modified
 			else
+				println("re-enabled same params")
 				modified=:Unmodified
 			end
 		else
+			println("intensity unmodified")
 			modified=:Unmodified
 		end
 	end
@@ -167,20 +174,22 @@ end
 
 Enabled(mi::MemorylessIntensity)=mi.enabled
 
-function Reset!(mi::MemorylessIntensity, time, state, keys...)
+
+function Reset!(mi::MemorylessIntensity, rng, time, state, keys...)
 	(mi.enabled, params)=mi.invariant(time, state, keys...)
 	if mi.enabled
-		Parameters!(mi.distribution, params...)
+		Parameters!(mi.distribution, rng, params...)
 		EnablingTime!(mi.distribution, time)
 	end
 end
 
-function Update!(mi::MemorylessIntensity, time, state, keys...)
+
+function Update!(mi::MemorylessIntensity, rng, time, state, keys...)
 	modified=:Undefined
 	(enabled, params)=mi.invariant(time, state, keys...)
 	if mi.enabled!=enabled
 		if enabled
-			Parameters!(mi.distribution, params...)
+			Parameters!(mi.distribution, rng, params...)
 			EnablingTime!(mi.distribution, time)
 			modified=:Enabled
 		else
@@ -190,7 +199,7 @@ function Update!(mi::MemorylessIntensity, time, state, keys...)
 	else
 		if enabled
 			if params!=Parameters(mi.distribution)
-				Parameters!(mi.distribution, params...)
+				Parameters!(mi.distribution, rng, params...)
 				# This is the only line different from MemoryIntensity.
 				EnablingTime!(mi.distribution, time)
 				modified=:Modified

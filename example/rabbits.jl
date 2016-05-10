@@ -290,13 +290,13 @@ function MakeBoard(M, N, rng)
 	for midx = 1:N
 		for direction = 1:4
 			hazard=WanderIntensity(TransitionWeibull(1, 2, 0))
-			AddTransition!(process,
+			AddIntegratedTransition!(process,
 				hazard, ((midx, 0, 0), (midx, -direction, 0),),
 				WanderDirection, ((midx, -direction, 0),),
 				"m$midx$direction")
 
 			infect=InfectIntensity()
-			AddTransition!(process,
+			AddIntegratedTransition!(process,
 				infect, ((midx, 0, 1), (midx, -direction, 0),
 						(midx, -direction, 1)),
 				Infect, ((midx, -direction, 1),),

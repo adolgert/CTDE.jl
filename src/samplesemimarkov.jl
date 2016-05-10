@@ -204,10 +204,6 @@ end
 
 
 
-function unit_hazard_interval(rng::MersenneTwister)
-	-log(rand(rng))
-end
-
 # Enable or modify a hazard.
 function Enable(propagator::NextReactionHazards, clock,
 		now, updated, rng)

@@ -154,12 +154,12 @@ type UniformDistribution <: TransitionDistribution
   ta::Float64
   tb::Float64
   te::Float64
-  UniformDistribution(ta, tb, te)=new(ta, tb, te)
+  UniformDistribution(rng, ta, tb, te)=new(ta, tb, te)
 end
 
 
 Parameters(ud::UniformDistribution)=[ud.ta, ud.tb, ud.te]
-function Parameters!(ud::UniformDistribution, params)
+function Parameters!(ud::UniformDistribution, rng, params)
     ud.ta=params[1]
     ud.tb=params[2]
     ud.te=params[3]
@@ -269,12 +269,12 @@ type TriangularDistribution <: TransitionDistribution
   tb::Float64
   tm::Float64
   te::Float64
-  TriangularDistribution(ta, tb, tm, te)=new(ta, tb, tm, te)
+  TriangularDistribution(rng, ta, tb, tm, te)=new(ta, tb, tm, te)
 end
 
 
 Parameters(ud::TriangularDistribution)=[ud.ta, ud.tb, ud.tm, ud.te]
-function Parameters!(ud::TriangularDistribution, params)
+function Parameters!(ud::TriangularDistribution, rng, params)
     ud.ta=params[1]
     ud.tb=params[2]
     ud.tm=params[3]
@@ -388,7 +388,7 @@ type PiecewiseLinearDistribution <: TransitionDistribution
     te::Float64
 end
 
-function PiecewiseLinearDistribution(times, hazards, enabling_time)
+function PiecewiseLinearDistribution(rng, times, hazards, enabling_time)
     if times[length(times)]<Inf
         b=[times; Inf]
         w=[hazards; w[length[w]]]
@@ -491,7 +491,7 @@ function invlogccdf(d::LogLogistic, lp::Float64)
     d.alpha*(1-exp(-lp)^(1/d.beta))
 end
 
-function TransitionLogLogistic(a::Float64, b::Float64, t::Float64)
+function TransitionLogLogistic(rng, a::Float64, b::Float64, t::Float64)
     WrappedDistribution(LogLogistic(a,b), t)
 end
 

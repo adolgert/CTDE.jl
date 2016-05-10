@@ -7,12 +7,12 @@ F(T)=1-exp(-((T-Te)/lambda)^k)
 type TransitionWeibull <: TransitionDistribution
     parameters::Array{Float64,1}
     te::Float64
-    TransitionWeibull(lambda, k)=new([lambda, k], 0.0)
+    TransitionWeibull(rng, lambda, k)=new([lambda, k], 0.0)
 end
 
 
 Parameters(tw::TransitionWeibull)=tw.parameters
-function Parameters!(tw::TransitionWeibull, λ, k)
+function Parameters!(tw::TransitionWeibull, rng, λ, k)
     tw.parameters[1]=λ
     tw.parameters[2]=k
 end

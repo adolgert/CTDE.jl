@@ -7,14 +7,14 @@ for consistency.
 type TransitionExponential <: TransitionDistribution
     hazard::Float64
     enabling_time::Float64
-    TransitionExponential(rate::Real)=new(rate, 0.0)
+    TransitionExponential(rng, rate::Real)=new(rate, 0.0)
 end
 
 
 Parameters(d::TransitionExponential)=[d.hazard]
 
 
-function Parameters!(d::TransitionExponential, rate::Real)
+function Parameters!(d::TransitionExponential, rng, rate::Real)
     d.hazard=rate
 end
 

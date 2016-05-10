@@ -56,7 +56,7 @@ function MakeProcess(N, parameters, rng)
             end
         end
         # We add the index=transition_idx only for Direct methods.
-        AddTransition!(process,
+        AddIntegratedTransition!(process,
             hazard, depends,
             Recover, [midx],
             "r$midx", index=transition_idx )
@@ -67,7 +67,7 @@ function MakeProcess(N, parameters, rng)
                 infect=MemorylessIntensity(InfectParameters,
                         TransitionExponential(parameters[:Beta]))
                         #TransitionWeibull(parameters[:Beta], 1.5, 0))
-                AddTransition!(process,
+                AddIntegratedTransition!(process,
                     infect, [midx, sidx],
                     Infect, [sidx],
                     "i$midx$sidx", index=transition_idx)

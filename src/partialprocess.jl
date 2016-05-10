@@ -1,6 +1,7 @@
 export Intensity, Enabled, Update!, Reset!, Sample, Putative, HazardIntegral
 export PartialProcess, Time, AddTransition!, Init, Hazards, Fire!
 export TransitionCount, MemoryIntensity, MemorylessIntensity
+export AddIntegratedTransition!
 
 include("intensity.jl")
 
@@ -29,6 +30,19 @@ into the state.
 """
 function AddTransition!(pp::PartialProcess, intensity::Intensity,
 		int_deps, firing::Function, fire_deps, name; sampler_args...)
+	clock=Clock(intensity, firing, name, sampler_args)
+	push!(pp.clocks, clock)
+	AddIntensity!(pp.dependency_graph, clock, int_deps)
+	AddFiring!(pp.dependency_graph, clock, fire_deps)
+end
+
+
+"""
+The dependencies, int_deps and fire_deps, have to be arrays of keys
+into the state. This version works with Next Reaction method.
+"""
+function AddIntegratedTransition!(pp::PartialProcess, intensity::Intensity,
+		int_deps, firing::Function, fire_deps, name; sampler_args...)
 	clock=Clock(IntegratedIntensity(intensity), firing, name, sampler_args)
 	push!(pp.clocks, clock)
 	AddIntensity!(pp.dependency_graph, clock, int_deps)
@@ -36,10 +50,10 @@ function AddTransition!(pp::PartialProcess, intensity::Intensity,
 end
 
 
-function Init(pp::PartialProcess)
+function Init(pp::PartialProcess, rng)
 	pp.time=0.0
 	for clock in pp.clocks
-		FireIntensity!(clock.intensity, pp.time, pp.state,
+		FireIntensity!(clock.intensity, rng, pp.time, pp.state,
 			IntensityProject(pp.dependency_graph, clock)...)
 	end
 end
@@ -55,16 +69,18 @@ end
 
 function Fire!(pp::PartialProcess, time, clock, rng, intensity_observer,
 		state_observer)
+	println("Fire $clock")
 	affected_clocks, affected_places=FiringProject!(
 			pp.dependency_graph, clock, pp.state, clock.firing)
-	fireupdate=FireIntensity!(clock.intensity, time, pp.state,
+	fireupdate=FireIntensity!(clock.intensity, rng, time, pp.state,
 			IntensityProject(pp.dependency_graph, clock)...)
 	intensity_observer(clock, time, :Fired, rng)
 	if Enabled(clock.intensity)
 		intensity_observer(clock, time, :Enabled, rng)
 	end
 	for affected in affected_clocks
-		updated=Update!(affected.intensity, time, pp.state,
+		println("Update $affected")
+		updated=Update!(affected.intensity, rng, time, pp.state,
 				IntensityProject(pp.dependency_graph, affected))
 		if updated!=:Unmodified
 			intensity_observer(affected, time, updated, rng)

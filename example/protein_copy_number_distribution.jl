@@ -6,7 +6,10 @@
 # pp. 628–636, 2012.
 
 using CTDE
+using UNURAN
 import Base: start, next, done
+using Logging
+@Logging.configure(level=DEBUG)
 
 function Initiate(state, who)
     state[who]=1
@@ -97,23 +100,23 @@ function MakeProcess(parameters, rng, decay=true)
     process=PartialProcess(state)
 
     initiate_rate=MemoryIntensity(BuildInitiateRate(parameters),
-            TransitionExponential(1.0))
-    AddTransition!(process,
+            TransitionExponential(rng, 1.0))
+    AddIntegratedTransition!(process,
         initiate_rate, Array{Int,1}(1:skip),
         Initiate, [1],
         "initiate")
 
     terminate_rate=MemoryIntensity(BuildTerminateRate(parameters),
-            TransitionExponential(1.0))
-    AddTransition!(process,
+            TransitionExponential(rng, 1.0))
+    AddIntegratedTransition!(process,
         terminate_rate, [L],
         Terminate, [L],
         "terminate")
 
     if decay
         decay_rate=MemoryIntensity(BuildDecayRate(parameters),
-                TransitionExponential(1.0))
-        AddTransition!(process,
+                TransitionExponential(rng, 1.0))
+        AddIntegratedTransition!(process,
             decay_rate, [DecayPlace],
             Decay, [DecayPlace],
             "decay")
@@ -121,8 +124,8 @@ function MakeProcess(parameters, rng, decay=true)
 
     for codon_idx = 1:(L-skip)
         elongate_rate=MemoryIntensity(BuildElongateRate(parameters),
-                TransitionGamma(1.0, 2.0))
-        AddTransition!(process,
+                CTDE.GammaUnur(rng, 1.0, 2.0))
+        AddIntegratedTransition!(process,
             elongate_rate, [codon_idx, codon_idx+skip],
             Elongate, [codon_idx, codon_idx+1],
             "elongate$(codon_idx)")
@@ -137,8 +140,8 @@ function MakeProcess(parameters, rng, decay=true)
     # is at L-3, because it can be blocked by the mRNA at L.
     for codon_idx = (L-skip+1):(L-1)
         elongate_rate=MemoryIntensity(BuildElongateEndRate(parameters),
-                TransitionGamma(1.0, 2.0))
-        AddTransition!(process,
+                GammaUnur(rng, 1.0, 2.0))
+        AddIntegratedTransition!(process,
             elongate_rate, [codon_idx],
             Elongate, [codon_idx, codon_idx+1],
             "elongate$(codon_idx)")
@@ -188,6 +191,7 @@ end
 
 function Observer(store::Observations)
     function Observe(state::Array{Int,1}, affected, clock_name, time::Float64)
+        println("observe clock $clock_name $time")
         if clock_name=="terminate"
             # print("TERMINATE $time\n")
             push!(store.leave, time)
@@ -315,7 +319,11 @@ end
 
 
 function Run()
-    rng=MersenneTwister(333333)
+    #rng=MersenneTwister(333333)
+    seed=UInt64[111, 222, 333, 444, 555, 666]
+    RngStream_SetPackageSeed(seed)
+    rng=unur_urng_rngstream_new("urng-1")
+
     run_cnt=50
     parameters=Dict(
         :n => 0.5,

@@ -12,7 +12,10 @@ include("protein_copy_number_distribution.jl")
 
 
 function DecayRuns()
-    rng=MersenneTwister(333333)
+    #rng=MersenneTwister(333333)
+    seed=UInt64[111, 222, 333, 444, 555, 666]
+    RngStream_SetPackageSeed(seed)
+    rng=unur_urng_rngstream_new("urng-1")
     run_cnt=1000
     parameters=Dict(
         :n => 0.5,
@@ -43,7 +46,10 @@ end
 
 
 function LongRuns()
-    rng=MersenneTwister(333333)
+    #rng=MersenneTwister(333333)
+    seed=UInt64[111, 222, 333, 444, 555, 666]
+    RngStream_SetPackageSeed(seed)
+    rng=unur_urng_rngstream_new("urng-1")
     run_cnt=10
     parameters=Dict(
         :n => 0.5,
@@ -90,4 +96,4 @@ function Plot()
 end
 
 DecayRuns()
-LongRuns()
+#LongRuns()

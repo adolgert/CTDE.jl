@@ -9,7 +9,7 @@ type WrappedDistribution <: TransitionDistribution
     # Relative to the enabling time.
     relative_distribution::Distributions.ContinuousUnivariateDistribution
     enabling_time::Float64
-    WrappedDistribution(d)=new(d, 0.0)
+    WrappedDistribution(rng, d)=new(d, 0.0)
 end
 
 
@@ -18,7 +18,7 @@ function Parameters(distribution::WrappedDistribution)
 end
 
 
-function Parameters!(distribution::WrappedDistribution, params_list...)
+function Parameters!(distribution::WrappedDistribution, rng, params_list...)
     # Use the type of the wrapped distribution, which is immutable,
     # to create a new copy using the modified parameters
     dist_type=typeof(distribution.relative_distribution)

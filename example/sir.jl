@@ -97,7 +97,7 @@ function MakeSIR(N=10)
 	for ridx = 1:N
 		hazard=SpeciesIntensity(TransitionExponential(1.0, 0.0))
 		recovery=BuildStoichiometricFiring([-1, 1])
-		AddTransition!(process, hazard, (state[ridx].i,),
+		AddIntegratedTransition!(process, hazard, (state[ridx].i,),
 				recovery, (state[ridx].i, state[ridx].r), "r$ridx")
 	end
 
@@ -107,7 +107,7 @@ function MakeSIR(N=10)
 			if sidx!=iidx
 				hazard=SpeciesIntensity(TransitionExponential(1.5, 0.0))
 				infection=BuildStoichiometricFiring([-1, 1])
-				AddTransition!(process, hazard,
+				AddIntegratedTransition!(process, hazard,
 						(state[iidx].i, state[sidx].s), infection,
 						(state[sidx].s, state[sidx].i), "i$iidx-$sidx")
 			end

@@ -106,7 +106,7 @@ function MakeProcess(N, parameters, rng)
 
     for midx = 1:N
         hazard=RecoverIntensity(TransitionExponential(parameters['r'], 0))
-        AddTransition!(process,
+        AddIntegratedTransition!(process,
             hazard, [(midx, 1)],
             Recover, [(midx, 1), (midx, 2)],
             "r$midx")
@@ -115,7 +115,7 @@ function MakeProcess(N, parameters, rng)
             if sidx!=midx
                 infect=InfectIntensity(
                         TransitionExponential(parameters['i'], 0))
-                AddTransition!(process,
+                AddIntegratedTransition!(process,
                     infect, [(midx, 1), (sidx, 0)],
                     Infect, [(sidx, 0), (sidx, 1)],
                     "i$midx$sidx")
