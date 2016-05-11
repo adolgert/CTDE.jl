@@ -1,4 +1,7 @@
 using UNURAN
+###################################################
+# These functions help with any unuran distribution
+###################################################
 
 function MakeExponential()
 	distr=unur_distr_exponential(C_NULL, 0)
@@ -72,12 +75,67 @@ function randexp(rng::Ptr{UNUR_URNG})
 end
 
 
+####################################################
+# Continuous Unur Distributions can derive from this
+####################################################
 
+abstract UnurDistribution <: TransitionDistribution
+
+
+function EnablingTime!(gu::UnurDistribution, t::Float64)
+    gu.te=t
+end
+
+
+function Sample(dist::UnurDistribution, now::Float64, rng)
+    d=now-dist.te
+    if abs(d)<eps(1.0)
+        v=dist.te+unur_sample_cont(dist.gen)
+    else
+        TruncateDomain(dist.gen, d)
+        v=dist.te+unur_sample_cont(dist.gen)
+    end
+    v
+end
+
+
+function MeasuredSample(gu::UnurDistribution, now::Float64, rng)
+    d=now-gu.te
+    if abs(d)<eps(1.0)
+        (v, S)=SampleThenQuantile(gu.gen, gu.distr)
+    else
+        TruncateDomain(gu.gen, d)
+        (v, S)=SampleThenQuantile(gu.gen, gu.distr)
+    end
+    (gu.te+v, S)
+end
+
+
+# xa is the conditonal survival
+function ConsumeSample(gu::UnurDistribution, xa, start, finish)
+    xa=(xa<0) ? 1 : xa
+    xa*ConditionalSurvival(gu.distr, start-gu.te, finish-gu.te)
+end
+
+
+function Putative(gu::UnurDistribution, when, interval, consumed_interval)
+    # If you want unur_quantile to work, you have to use
+    # HINV, NINV, PINV, CSTD, or DGT. CSTD requires that
+    # the generator have an inversion method.
+    S=interval/consumed_interval
+    shift=when-gu.te
+    gu.te+ShiftedQuantile(gu.gen, gu.distr, S, shift)
+end
+
+
+##########################################
+# Gamma Distribution
+##########################################
 export GammaUnur
 
 # Gamma Distribution, implemented with UNURAND
 # http://statmath.wu.ac.at/unuran/doc/unuran.html#gamma
-type GammaUnur <: TransitionDistribution
+type GammaUnur <: UnurDistribution
 	parameters::Array{Float64,1}
 	te::Float64
 	gen::Ptr{UNUR_GEN}
@@ -106,69 +164,163 @@ function Parameters!(gu::GammaUnur, rng, alpha, beta)
 		unur_free(gu.gen)
 		unur_distr_free(gu.distr)
 	end
-	println("GammaUnur::Create a new one $alpha $beta")
-	gu.distr=unur_distr_gamma(Float64[alpha, beta], 2)
+	gu.distr=unur_distr_gamma([alpha, beta], 2)
 	out_params=Ref{Ptr{Cdouble}}(0)
 	nparams=unur_distr_cont_get_pdfparams(gu.distr, out_params)
-	println("outparams $(out_params[])")
 	arr=pointer_to_array(out_params[], nparams)
-	println("GammaUnur params: $arr")
-	println("GammaUnur::Create parameters $nparams")
+    println("GammaUnur::Parameters $arr")
 	par=unur_auto_new(gu.distr)
-	println("GammaUnur::Set urng")
 	unur_set_urng(par, rng)
-	println("GammaUnur::Init")
 	gu.gen=unur_init(par)
-	println("GammaUnur::Parameters! end")
 end
 
 
-function EnablingTime!(gu::GammaUnur, t::Float64)
-	println("enabling time $t")
-    gu.te=t
+##############################################
+# Uniform distribution
+##############################################
+
+
+export UniformUnur
+
+type UniformUnur <: UnurDistribution
+    parameters::Array{Float64,1}
+    te::Float64
+    gen::Ptr{UNUR_GEN}
+    distr::Ptr{UNUR_DISTR}
 end
 
 
-function Sample(dist::GammaUnur, now::Float64, rng)
-    d=now-dist.te
-    if abs(d)<eps(1.0)
-    	println("Sample: te $(gu.te) now $now")
-    	v=dist.te+unur_sample_cont(dist.gen)
-    else
-    	println("Sample shifted te $(dist.te) now $now")
-    	TruncateDomain(dist.gen, d)
-    	v=dist.te+unur_sample_cont(dist.gen)
+function UniformUnur(rng::Ptr{UNUR_URNG}, alpha, beta)
+    println("GammaUnur begin")
+    distr=unur_distr_uniform([alpha, beta], 2)
+    par=unur_auto_new(distr)
+    unur_set_urng(par, rng)
+    gen=unur_init(par)
+    gu=UniformUnur([alpha, beta], 0.0, gen, distr)
+    println("UniformUnur end")
+    gu
+end
+
+
+Parameters(gu::UniformUnur)=gu.parameters
+function Parameters!(gu::UniformUnur, rng, alpha, beta)
+    println("UniformUnur::Parameters! begin")
+    gu.parameters[1]=alpha
+    gu.parameters[2]=beta
+    if gu.gen!=nothing
+        unur_free(gu.gen)
+        unur_distr_free(gu.distr)
     end
-    v
+    gu.distr=unur_distr_uniform([alpha, beta], 2)
+    out_params=Ref{Ptr{Cdouble}}(0)
+    nparams=unur_distr_cont_get_pdfparams(gu.distr, out_params)
+    arr=pointer_to_array(out_params[], nparams)
+    println("UniformUnur::Parameters $arr")
+    par=unur_auto_new(gu.distr)
+    unur_set_urng(par, rng)
+    gu.gen=unur_init(par)
 end
 
 
-function MeasuredSample(gu::GammaUnur, now::Float64, rng)
-    d=now-gu.te
-    if abs(d)<eps(1.0)
-    	(v, S)=SampleThenQuantile(gu.gen, gu.distr)
+#########################################
+# Log-logistic distribution
+#########################################
+
+export LogLogisticUnur
+
+function LogLogisticPdf(x, distr::Ptr{UNUR_DISTR})
+    out_params=Ref{Ptr{Cdouble}}(0)
+    nparams=unur_distr_cont_get_pdfparams(gu.distr, out_params)
+    arr=pointer_to_array(out_params[], nparams)
+    a=arr[1]
+    b=arr[2]
+    v=(b/a)*(x/a)^(b-1)/( 1+(x/a)^b )^2
+    convert(Cdouble, v)::Cdouble
+end
+
+function LogLogisticDPdf(x, distr::Ptr{UNUR_DISTR})
+    out_params=Ref{Ptr{Cdouble}}(0)
+    nparams=unur_distr_cont_get_pdfparams(gu.distr, out_params)
+    arr=pointer_to_array(out_params[], nparams)
+    a=arr[1]
+    b=arr[2]
+    v=(a^(1-2 b) x^(b-2) ((b-1) a^b ((a/x)^(-b)+1)-2 b x^b))/((a/x)^(-b)+1)^3
+    convert(Cdouble, v)::Cdouble
+end
+
+function LogLogisticCdf(x, distr::Ptr{UNUR_DISTR})
+    out_params=Ref{Ptr{Cdouble}}(0)
+    nparams=unur_distr_cont_get_pdfparams(gu.distr, out_params)
+    arr=pointer_to_array(out_params[], nparams)
+    a=arr[1]
+    b=arr[2]
+    v=1.0/( 1+(x/a)^b )
+    convert(Cdouble, v)::Cdouble
+end
+
+# y=1/(1+(x/a)^b)
+# 1+(x/a)^b = 1/y
+# (x/a)^b = 1/y - 1
+# (x/a)=((1/y)-1)^(1/b)
+# x=a((1/y)-1)^(1/b)
+function LogLogisticInvCdf(x, distr::Ptr{UNUR_DISTR})
+    out_params=Ref{Ptr{Cdouble}}(0)
+    nparams=unur_distr_cont_get_pdfparams(gu.distr, out_params)
+    arr=pointer_to_array(out_params[], nparams)
+    a=arr[1]
+    b=arr[2]
+    v=a*((1/y)-1)^(1/b)
+    convert(Cdouble, v)::Cdouble
+end
+
+function MakeLogLogistic(a, b)
+    const pdf=cfunction(LogLogisticPdf, Cdouble, (Cdouble, Ptr{UNUR_DISTR}))
+    const dpdf=cfunction(LogLogisticDPdf, Cdouble, (Cdouble, Ptr{UNUR_DISTR}))
+    const cdf=cfunction(LogLogisticCdf, Cdouble, (Cdouble, Ptr{UNUR_DISTR}))
+    const inv=cfunction(LogLogisticInvCdf, Cdouble, (Cdouble, Ptr{UNUR_DISTR})
+    distr=unur_distr_cont_new()
+    unur_distr_cont_set_pdf( distr, pdf )
+    unur_distr_cont_set_dpdf( distr, dpdf )
+    unur_distr_cont_set_cdf( distr, cdf )
+    unur_distr_cont_set_invcdf( distr, inv )
+    unur_distr_cont_set_domain( distr, 0, UNUR_INFINITY)
+    if b>1
+        unur_distr_cont_set_mode(distr, a*( (b-1)/(b+1) )^(1/b))
     else
-    	println("MeasuredSample: te $(gu.te) now $now")
-    	TruncateDomain(gu.gen, d)
-    	(v, S)=SampleThenQuantile(gu.gen, gu.distr)
+        unur_distr_cont_set_mode(distr, 0)
     end
-	(gu.te+v, S)
+    par=unur_tdr_new(distr)
+    gen=unur_init(par)
+    (distr, gen)
 end
 
 
-# xa is the conditonal survival
-function ConsumeSample(gu::GammaUnur, xa, start, finish)
-    xa=(xa<0) ? 1 : xa
-    xa*ConditionalSurvival(gu.distr, start-gu.te, finish-gu.te)
+export LogLogisticUnur
+
+# PDF is (b/a)(x/a)^(b-1)/( 1+(x/a)^b )^2
+# CDF is 1/( 1+(x/a)^(-b) )
+type LogLogisticUnur <: UnurDistribution
+    parameters::Array{Float64,1}
+    te::Float64
+    gen::Ptr{UNUR_GEN}
+    distr::Ptr{UNUR_DISTR}
 end
 
 
-function Putative(gu::GammaUnur, when, interval, consumed_interval)
-	# If you want unur_quantile to work, you have to use
-	# HINV, NINV, PINV, CSTD, or DGT. CSTD requires that
-	# the generator have an inversion method.
-	S=interval/consumed_interval
-	shift=when-gu.te
-	println("Putative S $S shift $shift")
-	gu.te+ShiftedQuantile(gu.gen, gu.distr, S, shift)
+function LogLogisticUnur(rng::Ptr{UNUR_URNG}, alpha, beta)
+    distr, gen=MakeLogLogistic(alpha, beta)
+    LogLogisticUnur([alpha, beta], 0.0, gen, distr)
+end
+
+
+Parameters(gu::LogLogisticUnur)=gu.parameters
+function Parameters!(gu::LogLogisticUnur, rng, alpha, beta)
+    gu.parameters[1]=alpha
+    gu.parameters[2]=beta
+    if gu.gen!=nothing
+        unur_free(gu.gen)
+        unur_distr_free(gu.distr)
+    end
+    distr, gen=MakeLogLogistic(alpha, beta)
+    LogLogisticUnur([alpha, beta], 0.0, gen, distr)
 end
