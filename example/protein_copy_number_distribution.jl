@@ -191,7 +191,6 @@ end
 
 function Observer(store::Observations)
     function Observe(state::Array{Int,1}, affected, clock_name, time::Float64)
-        println("observe clock $clock_name $time")
         if clock_name=="terminate"
             # print("TERMINATE $time\n")
             push!(store.leave, time)

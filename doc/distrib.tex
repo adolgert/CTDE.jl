@@ -10,6 +10,7 @@
 \begin{document}
 \maketitle
 
+\tableofcontents
 \section{Introduction}
 This describes implementation of distributions for sampling of
 distributions for stochastic simulation in continuous time.
@@ -392,5 +393,46 @@ If $t_j<m$, the cutoff is
   G'=\frac{b-m}{(b-a)(b-m)}
 \end{equation}
 Below that,
+
+\section{Atomic and Continuous Together}
+An atomic hazard is
+\begin{equation}
+  p_i=P[T=t_i|T\ge t_i].
+\end{equation}
+The survival is $P(T\ge t)$, so
+\begin{equation}
+  p_i=\frac{P[T=t_i]}{P(T\ge t)}=\frac{q_i}{S(t)}
+\end{equation}
+where $q_i$ is the pmf. For a system with just atomic
+jumps, the survival is
+\begin{equation}
+  S(t)=\prod_{t_i<t}(1-p_i)
+\end{equation}
+so
+\begin{equation}
+  q_j=p_j\prod_{t_i<t_j}(1-p_i)
+\end{equation}
+
+The survival for a distribution with atomic jumps is
+\begin{equation}
+  S(t)=\prod_{t_i<t}(1-p_i)e^{-\int_0^t\lambda(s)ds}
+\end{equation}
+where the discrete jumps have atomic hazard $p_i$ at times $t_i$.
+The pmf of the atomic part, alone, is $p_j\prod(1-p_i)$.
+This is defined as cadlag, so at the time $t_i$, the jump has
+happened.
+
+If we separate the jumps from the continuous, then
+the jumps are
+\begin{equation}
+  q_j=p_j\prod_i^{j-1}(1-p_i)e^{-\int_0^t\lambda(s)ds}
+\end{equation}
+and the continuous parts have discontinuous densities
+\begin{equation}
+  f(t)=\left[\prod_i^j(1-p_i)\right]\left[\int_0^t\lambda(s)ds)\right]
+  e^{-\int_0^t\lambda(s)ds}.
+\end{equation}
+
+
 
 \end{document}

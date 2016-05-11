@@ -69,7 +69,6 @@ end
 
 function Fire!(pp::PartialProcess, time, clock, rng, intensity_observer,
 		state_observer)
-	println("Fire $clock")
 	affected_clocks, affected_places=FiringProject!(
 			pp.dependency_graph, clock, pp.state, clock.firing)
 	fireupdate=FireIntensity!(clock.intensity, rng, time, pp.state,
@@ -79,7 +78,6 @@ function Fire!(pp::PartialProcess, time, clock, rng, intensity_observer,
 		intensity_observer(clock, time, :Enabled, rng)
 	end
 	for affected in affected_clocks
-		println("Update $affected")
 		updated=Update!(affected.intensity, rng, time, pp.state,
 				IntensityProject(pp.dependency_graph, affected))
 		if updated!=:Unmodified

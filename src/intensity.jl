@@ -119,32 +119,26 @@ end
 
 
 function Update!(mi::MemoryIntensity, rng, time, state, keys...)
-	println("MemoryIntensity::Update!")
 	modified=:Undefined
 	(enabled, params)=mi.invariant(time, state, keys...)
 	if mi.enabled!=enabled
 		if enabled
-			println("newly enabled")
 			Parameters!(mi.distribution, rng, params...)
 			EnablingTime!(mi.distribution, time)
 			modified=:Enabled
 		else
-			println("newly disabled")
 			modified=:Disabled
 		end
 		mi.enabled=enabled
 	else
 		if enabled
 			if params!=Parameters(mi.distribution)
-				println("re-enabled new params")
 				Parameters!(mi.distribution, rng, params...)
 				modified=:Modified
 			else
-				println("re-enabled same params")
 				modified=:Unmodified
 			end
 		else
-			println("intensity unmodified")
 			modified=:Unmodified
 		end
 	end
