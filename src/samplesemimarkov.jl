@@ -69,12 +69,12 @@ function Next(propagator::FixedDirect, process, rng)
             propagator.clock_index[index]=clock
             push!(hazards, (index, lambda))
         end
-        Update!(propagator.tree, hazards)
+        push!(propagator.tree, hazards)
         propagator.init=false
     end
-    total=Total(propagator.tree)
+    total=sum(propagator.tree)
     if total>eps(Float64)
-        (index, value)=Choose(propagator.tree, rand(rng)*total)
+        (index, value)=choose(propagator.tree, rand(rng)*total)
         clock=propagator.clock_index[index]
         return (Time(process)-log(rand(rng))/total, clock)
     else
@@ -88,10 +88,10 @@ function Observer(propagator::FixedDirect)
             index=fd_indexof(clock.kind)
             propagator.clock_index[index]=clock
             lambda=Parameters(Distribution(clock.intensity))[1]
-            Update!(propagator.tree, index, lambda)
+            push!(propagator.tree, index, lambda)
         else
             index=fd_indexof(clock.kind)
-            Update!(propagator.tree, index, 0.0)
+            push!(propagator.tree, index, 0.0)
         end
     end
 end
