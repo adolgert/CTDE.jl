@@ -1,0 +1,12 @@
+.DS_Store
+/Manifest.toml
+/dev/
+/docs/build/
+/docs/site/
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out

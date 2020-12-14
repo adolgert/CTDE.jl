@@ -1,6 +1,6 @@
 using DataStructures
 
-type Transition
+struct Transition
   key
   time::Float64
 end

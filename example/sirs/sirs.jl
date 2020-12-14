@@ -8,7 +8,7 @@ import CTDE: enabled_transitions, current_time, current_time!
 import CTDE: fire, init
 import Base: zero
 
-typealias Time Float64
+Time = Float64
 
 function individual_exponential_graph(params, contact::UndirectedGraph)
     cnt=length(contact)
@@ -66,10 +66,10 @@ function initialize_marking(model, contact)
     end
 end
 
-typealias TrajectoryEntry (Int64,Int64,Int64,Time)
+TrajectoryEntry = (Int64,Int64,Int64,Time)
 zero(::Type{TrajectoryEntry})=(0,0,0,0.)
 
-type TrajectoryStruct
+struct TrajectoryStruct
   s::Int64
   i::Int64
   r::Int64
@@ -82,7 +82,7 @@ function convert(::Type{TrajectoryEntry}, x::TrajectoryStruct)
     (x.s, x.i, x.r, x.t)
 end
 
-type HerdDiseaseObserver
+struct HerdDiseaseObserver
     t::Array{TrajectoryEntry,1}
     cnt::Int
     sir::TrajectoryStruct

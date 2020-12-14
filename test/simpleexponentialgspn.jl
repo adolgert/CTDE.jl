@@ -14,7 +14,7 @@ export all_transitions, modified_transitions, fire, current_time
 # with exponential transitions. Stoichiometry
 # is in the firing function.
 ###########################################
-type SEGSPN <: Model
+struct SEGSPN <: Model
 	marking
 	hazards
 	firing
@@ -61,7 +61,7 @@ end
 # In this version, the marking is in the Places in the graph.
 # There is no modification of tokens. The marking is a count.
 ################################################################
-type GraphExponentialTransition
+struct GraphExponentialTransition
 	distribution
 	fire
 end
@@ -71,7 +71,7 @@ function GraphExponentialTransition(dist)
 end
 
 
-type GraphExponentialGSPN <: Model
+struct GraphExponentialGSPN <: Model
 	# Graph with stoichiometry
 	gspn
 	# How the stochastic variable depends upon marking at places.

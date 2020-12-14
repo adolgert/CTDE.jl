@@ -11,7 +11,7 @@ include("prefixsearch.jl")
 """
 Classic Direct method for exponential transitions
 """
-type DirectMethod
+struct DirectMethod
 end
 
 function Next(rm::DirectMethod, process, rng)
@@ -41,7 +41,7 @@ This Direct method assumes that there are a fixed total number
 of transitions and that each clock is marked with :Index,
 numbered from 1, as an extra argument to the AddTransition!.
 """
-type FixedDirect
+struct FixedDirect
     tree::PrefixSearchTree{Float64}
     N::Int
     clock_index::Dict{Int, Any}
@@ -99,9 +99,9 @@ end
 
 """
 A record of a transition and the time.
-It's sortable by time.
+It's sortable by time. Immutable.
 """
-immutable NRTransition
+struct NRTransition
 	key
 	time::Float64
 end
@@ -123,7 +123,7 @@ end
 """
 Classic First Reaction method
 """
-type FirstReaction
+struct FirstReaction
 end
 
 function Next(fr::FirstReaction, system, rng)
@@ -145,12 +145,12 @@ Observer(fr::FirstReaction)=(hazard, time, updated, rng)->nothing
 Next reaction by Hazards
 Also called Anderson's method.
 """
-type TransitionRecord
+struct TransitionRecord
 	exponential_interval::Float64
 	heap_handle::Int64
 end
 
-type NextReactionHazards
+struct NextReactionHazards
 	firing_queue::MutableBinaryHeap{NRTransition,DataStructures.LessThan}
 	transition_state::Dict{Any,TransitionRecord}
 	init::Bool
@@ -299,7 +299,7 @@ intuitive choice. Each trajectory's distribution looks correct,
 but the master equation isn't correct.
 """
 
-type NaiveSampler
+struct NaiveSampler
     firing_queue::MutableBinaryHeap{NRTransition,DataStructures.LessThan}
     # This maps from transition to entry in the firing queue.
     transition_entry::Dict{Any,Int}

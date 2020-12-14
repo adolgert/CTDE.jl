@@ -6,7 +6,7 @@ import Base: getindex, setindex!
 import CTDE: Update!, Reset!
 
 
-type PhysicalState
+struct PhysicalState
     v::Array{Int,1}
     N::Int
     PhysicalState(N)=new(zeros(Int, N), N)
@@ -49,7 +49,7 @@ function Infect(state, susceptible, infectious)
 end
 
 
-type RecoverIntensity <: Intensity
+struct RecoverIntensity <: Intensity
     distribution::TransitionExponential
     enabled::Bool
     RecoverIntensity(dist)=new(dist, false)
@@ -73,7 +73,7 @@ function Update!(intensity::RecoverIntensity, time, state, who)
     modified
 end
 
-type InfectIntensity <: Intensity
+struct InfectIntensity <: Intensity
     distribution::TransitionExponential
     enabled::Bool
     InfectIntensity(dist)=new(dist, false)

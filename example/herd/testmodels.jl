@@ -15,7 +15,7 @@ import SemiMarkov: fire, init
 # and enables both at each step.
 # It is the simplest test of the samplers.
 # Transition keys are 1 and 2.
-type AlwaysEnabledModel
+struct AlwaysEnabledModel
 	current_time::Float64
 	distribution_cnt::Int
 	# The enabling time is always the current time for this model.
@@ -155,7 +155,7 @@ end
 # This is independently-firing transitions.
 # Because they are independent, no firing will disable another
 # transition.
-type BlinkingLightsModel
+struct BlinkingLightsModel
 	current_time::Float64
 	distribution_cnt::Int
 	enabling_time::Array{Float64,1}

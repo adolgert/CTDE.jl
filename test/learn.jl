@@ -14,7 +14,7 @@ module Simple
 import GSPN.all_transitions
 export A, all_transitions
 
-type A
+struct A
 end
 
 function all_transitions(x::A)

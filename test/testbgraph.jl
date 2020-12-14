@@ -9,7 +9,7 @@ v2=AdjacencyListGraph.add_vertex!(25, adj)
 e1=AdjacencyListGraph.add_edge!(v1, v2, 3.7, adj)
 println(e1)
 
-typealias StringDict{V} Dict{ASCIIString,V}
+StringDict{V} = Dict{ASCIIString,V}
 adj=AdjacencyListGraph.AdjacencyList(StringDict, Vector, Int, Float64, "my graph")
 v1=AdjacencyListGraph.add_vertex!("Chicago", 24, adj)
 v2=AdjacencyListGraph.add_vertex!("New York", 25, adj)
@@ -18,7 +18,7 @@ e1=AdjacencyListGraph.add_edge!(v1, v2, 3.7, adj)
 println(e1)
 
 
-typealias StringDict{V} Dict{ASCIIString,V}
+StringDict{V} = Dict{ASCIIString,V}
 adj=AdjacencyListGraph.AdjacencyList(StringDict, StringDict, Int, Float64, "my graph")
 v1=AdjacencyListGraph.add_vertex!("Chicago", 24, adj)
 v2=AdjacencyListGraph.add_vertex!("New York", 25, adj)

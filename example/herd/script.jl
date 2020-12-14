@@ -33,7 +33,7 @@ function print_observer(state)
     #     state.last_fired)
 end
 
-type OutputObserver
+struct OutputObserver
     observations::Array{(Int,Int,Int,Float64),1}
     cnt::Int
     filename::String

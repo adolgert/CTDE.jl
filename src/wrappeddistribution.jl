@@ -5,7 +5,7 @@ with an enabling time in order to produce a distribution which
 has an enabling time and can be sampled with a left shift,
 as required for continuous-time simulation.
 """
-type WrappedDistribution <: TransitionDistribution
+struct WrappedDistribution <: TransitionDistribution
     # Relative to the enabling time.
     relative_distribution::Distributions.ContinuousUnivariateDistribution
     enabling_time::Float64

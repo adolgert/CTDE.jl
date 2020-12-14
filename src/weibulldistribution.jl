@@ -4,7 +4,7 @@ Weibull distribution. lambda is the scale parameter and k the
 shape parameter.
 F(T)=1-exp(-((T-Te)/lambda)^k)
 """
-type TransitionWeibull <: TransitionDistribution
+struct TransitionWeibull <: TransitionDistribution
     parameters::Array{Float64,1}
     te::Float64
     TransitionWeibull(lambda, k)=new([lambda, k], 0.0)

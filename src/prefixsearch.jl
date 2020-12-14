@@ -4,7 +4,7 @@ and the nodes are sums of those values. It is meant to make it
 easier to find the leaf such that the sum of it and all previous
 leaves is greater than a given value.
 """
-type PrefixSearchTree{T<:Real}
+struct PrefixSearchTree{T<:Real}
 	array::Array{T,1}
 	depth::Int
 	offset::Int

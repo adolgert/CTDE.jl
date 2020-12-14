@@ -79,7 +79,7 @@ function MakeProcess(N, parameters, rng)
     (process, state)
 end
 
-type StateHistory
+struct StateHistory
     enter::Array{Float64,1}
     leave::Array{Float64,1}
     StateHistory()=new(Array(Float64,0), Array(Float64,0))
@@ -119,7 +119,7 @@ function AsXY(s::StateHistory, normalization)
     (x, y)
 end
 
-type SamplingObserver
+struct SamplingObserver
     measure_state::Array{StateHistory, 1}
     measure_time
     measure_summary

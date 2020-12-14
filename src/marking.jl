@@ -18,7 +18,7 @@ export TokenMarking, add_tokens, length
 export int_marking, getindex
 export TokenState, EmptyToken, IdToken
 
-type TokenContainer{T}
+struct TokenContainer{T}
     tokens::Array{T,1}
 end
 
@@ -32,7 +32,7 @@ function move!{T}(a::TokenContainer{T}, b::TokenContainer{T}, n::Int)
     append!(b.tokens, splice!(a.tokens, 1:n))
 end
 
-type IntContainer
+struct IntContainer
     tokens::Int
 end
 
@@ -43,9 +43,9 @@ function move!(a::IntContainer, b::IntContainer, n)
     b.tokens+=n
 end
 
-abstract TokenCreator
+abstract type TokenCreator end
 
-type DefaultTokenCreator{T} <: TokenCreator
+struct DefaultTokenCreator{T} <: TokenCreator
     token_type::DataType
     DefaultTokenCreator()=new(T)
 end
@@ -59,7 +59,7 @@ end
 
 pop!{T}(tc::TokenContainer{T})=pop!(tc.tokens)
 
-type IntTokenCreator <: TokenCreator
+struct IntTokenCreator <: TokenCreator
 end
 
 function create(creator::IntTokenCreator, n::Int)
@@ -70,15 +70,15 @@ function destroy(creator::IntTokenCreator, c::IntContainer)
 end
 
 
-type EmptyToken
+struct EmptyToken
 end
 
-type IdToken
+struct IdToken
     id::Int
 end
 
 # Guarantee unique Ids for each token.
-type IdTokenCreator <: TokenCreator
+struct IdTokenCreator <: TokenCreator
     cnt::Int
     token_type::DataType
     IdTokenCreator()=new(0, IdToken)
@@ -95,7 +95,7 @@ end
 
 # The marking is a dict which represents no tokens
 # by not having a key internally.
-type TokenMarking{C, TC}
+struct TokenMarking{C, TC}
     dict::Dict{Int64,C}
     token_creator::TC
 end
@@ -164,13 +164,13 @@ function add_tokens(marking::TokenMarking, place::Int64, n::Int)
 end
 
 
-type EnablingRecord
+struct EnablingRecord
     time::Float64
     invariant::Array{Int64,1}
 end
 
 # The state of the system.
-type TokenState{M,U}
+struct TokenState{M,U}
     marking::M # Marking, by place.
     user::U
     enabling::Dict{Int64,EnablingRecord} # Enabling time, by transition id.

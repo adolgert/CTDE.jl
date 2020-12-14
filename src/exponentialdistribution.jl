@@ -4,7 +4,7 @@ An exponential distribution with an enabling time. No,
 it doesn't use the enabling time, but it has one
 for consistency.
 """
-type TransitionExponential <: TransitionDistribution
+struct TransitionExponential <: TransitionDistribution
     hazard::Float64
     enabling_time::Float64
     TransitionExponential(rate::Real)=new(rate, 0.0)

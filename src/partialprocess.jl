@@ -11,7 +11,7 @@ include("partialprocess_private.jl")
 The PartialProcess is responsible for providing enough information
 to find the next state and time of the process.
 """
-type PartialProcess
+struct PartialProcess
 	state
     time::Float64
     dependency_graph::DependencyGraph

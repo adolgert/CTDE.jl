@@ -18,7 +18,7 @@ Weibull, but with an enabling time. They can be sampled at any
 time with the assumption that they have not fired up until
 some time called "now."
 """
-abstract TransitionDistribution
+abstract type TransitionDistribution end
 
 
 """
@@ -28,7 +28,7 @@ For this implementation, first make the `EmpiricalDistribution`.
 Then use `push!` to add values. Then call `build!` before
 sampling from it.
 """
-type EmpiricalDistribution
+struct EmpiricalDistribution
     samples::Array{Float64,1}
     built::Bool
     EmpiricalDistribution()=new(Array(Float64,0), false)
@@ -104,7 +104,7 @@ the enabling time. Using more than one of these in a simulation
 makes it possible for two to fire at the same time, which
 would violate requirements of the continuous-time model.
 """
-type DiracDistribution <: TransitionDistribution
+struct DiracDistribution <: TransitionDistribution
     value::Float64
     enabling_time::Float64
     DiracDistribution(value, enabling_time)=new(value, enabling_time)
@@ -150,7 +150,7 @@ end
 UniformDistribution is between a time ta and a time tb,
 both relative to the enabling time.
 """
-type UniformDistribution <: TransitionDistribution
+struct UniformDistribution <: TransitionDistribution
   ta::Float64
   tb::Float64
   te::Float64
@@ -264,7 +264,7 @@ TriangularDistribution is between a time ta and a time tb,
 with a midpoint at tm.
 All are relative to the enabling time.
 """
-type TriangularDistribution <: TransitionDistribution
+struct TriangularDistribution <: TransitionDistribution
   ta::Float64
   tb::Float64
   tm::Float64
@@ -382,7 +382,7 @@ between the given times.
 Whatever is the last point is
 treated as a horizontal line to infinity.
 """
-type PiecewiseLinearDistribution <: TransitionDistribution
+struct PiecewiseLinearDistribution <: TransitionDistribution
     b::Array{Float64, 1}
     w::Array{Float64, 1}
     te::Float64
@@ -460,7 +460,7 @@ end
 
 ##################################
 # F(t)=1/(1 + ((t-te)/α)^(-β))
-type LogLogistic <: Distributions.ContinuousUnivariateDistribution
+struct LogLogistic <: Distributions.ContinuousUnivariateDistribution
     alpha::Float64
     beta::Float64
 end
@@ -503,7 +503,7 @@ cancellation times of an event,
 this constructs a Nelson-Aalen estimator for the
 distribution.
 """
-type NelsonAalenEntry
+struct NelsonAalenEntry
     when::Float64
     hazard_sum::Float64
 end
@@ -511,7 +511,7 @@ end
 """
 H(t)=\int \lambda=\sum_{t_i<=t} (d/n)
 """
-type NelsonAalenDistribution
+struct NelsonAalenDistribution
     integrated_hazard::Array{NelsonAalenEntry,1}
     NelsonAalenDistribution(cnt::Int)=new(Array(NelsonAalenEntry, cnt))
 end
@@ -544,7 +544,7 @@ function kolmogorov_smirnov_statistic(ed::NelsonAalenDistribution, other)
 end
 
 
-type NelsonAalenSortEntry
+struct NelsonAalenSortEntry
     time::Float64
     fired::Int
 end

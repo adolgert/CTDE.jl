@@ -5,7 +5,7 @@ import Base: length
 export SmallGraph, DirectedGraph, UndirectedGraph, UndirectedMultiGraph
 export add_node, add_edge, out_degree, neighbors, length
 
-abstract SmallGraph
+abstract type SmallGraph end
 
 #######################=============================#
 # Dictionary-based graph implementation.
@@ -19,7 +19,7 @@ abstract SmallGraph
 #   @debug("Distance to ", target_node, " is ", properties["distance"])
 # end
 #####################################################
-type DirectedGraph <: SmallGraph
+struct DirectedGraph <: SmallGraph
 	node::Dict{Any,Dict{Any,Any}}
 	edge::Dict{Any,Dict{Any,Dict{Any,Any}}}
 end
@@ -52,7 +52,7 @@ add_edge(g::DirectedGraph, source, target)=
 
 
 #####################
-type UndirectedGraph <: SmallGraph
+struct UndirectedGraph <: SmallGraph
 	node::Dict{Any,Dict{Any,Any}}
 	edge::Dict{Any,Dict{Any,Dict{Any,Any}}}
 end
@@ -94,7 +94,7 @@ length(g::SmallGraph)=length(g.node)
 #   @debug("Distance is ", properties["distance"], " by ", properties["by"])
 # end
 ###############################################################
-type UndirectedMultiGraph <: SmallGraph
+struct UndirectedMultiGraph <: SmallGraph
 	node::Dict{Any,Dict{Any,Any}}
 	edge::Dict{Any,Array{Tuple{Any, Dict{Any,Any}},1}}
 end

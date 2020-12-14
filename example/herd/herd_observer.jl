@@ -1,6 +1,6 @@
 include("herd_trajectory.jl")
 
-type IndividualDiseaseObserver
+mutable struct IndividualDiseaseObserver
     t::Array{Float64,2}
     latent::Float64 # When latent was started.
     previous_time::Float64
@@ -44,9 +44,9 @@ end
 
 ########################################
 
-typealias Time Float64
+Time = Float64
 
-type TrajectoryStruct
+struct TrajectoryStruct
   s::Int64
   l::Int64
   i::Int64
@@ -58,7 +58,7 @@ type TrajectoryStruct
   TrajectoryStruct(s_,l_,i_,r_,n_,c_,t_)=new(s_,l_,i_,r_,n_,c_,t_)
 end
 
-type HerdDiseaseObserver
+struct HerdDiseaseObserver
     state::Array{Int64,2}
     time::Array{Time,1}
     cnt::Int

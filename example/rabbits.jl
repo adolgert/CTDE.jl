@@ -12,7 +12,7 @@ The board is complicated by having two ways to refer to a space,
 either relative to an individual or absolute, so that we
 can write hazards that depend on neighbors or on absolute locations.
 """
-type Board
+struct Board
   state::Array{Int,2}
   individuals::Array{Tuple{Int,Int}, 1}
   disease::Array{Int, 1}
@@ -185,7 +185,7 @@ end
 
 
 
-type WanderIntensity <: Intensity
+struct WanderIntensity <: Intensity
 	distribution::TransitionDistribution
 	enabled::Bool
 	lastlocation::Tuple{Int, Int}
@@ -235,7 +235,7 @@ function Infect(state, w::Tuple{Int, Int, Int})
 end
 
 
-type InfectIntensity <: Intensity
+struct InfectIntensity <: Intensity
 	distribution::TransitionDistribution
 	enabled::Bool
 	InfectIntensity()=new(TransitionExponential(10.0, 0.0), false)

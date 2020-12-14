@@ -118,7 +118,7 @@ function independent_model_weib()
 end
 
 
-type EmpiricalObserver
+struct EmpiricalObserver
 	empirical::Array{EmpiricalDistribution,1}
 	previous_time::Float64
 	function EmpiricalObserver(cnt)

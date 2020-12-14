@@ -5,7 +5,7 @@ This defines some default behavior. The intensity is responsible for
 knowing, given the past states since this transition last fired,
 what is the current distribution going forward.
 """
-abstract Intensity
+abstract type Intensity end
 
 """
 If the intensity defines an enabled member, this will
@@ -49,7 +49,7 @@ end
 The IntegratedIntensity wraps an intensity in order to
 ensure that its integrated hazard is always calculated.
 """
-type IntegratedIntensity <: Intensity
+struct IntegratedIntensity <: Intensity
 	last_modification_time::Float64
 	integrated_hazard::Float64
 	intensity::Intensity
@@ -100,7 +100,7 @@ the invariant to determine when it is enabled, the parameters
 function, which sets parameters from state, and the distribution
 whose parameters are set.
 """
-type MemoryIntensity <: Intensity
+struct MemoryIntensity <: Intensity
   invariant::Function
   distribution::TransitionDistribution
   enabled::Bool
@@ -157,7 +157,7 @@ intensity sees a change of state which changes its parameters,
 the MemorylessIntensity changes the enabling time to the current
 time, while the MemoryIntensity does not.
 """
-type MemorylessIntensity <: Intensity
+struct MemorylessIntensity <: Intensity
   invariant::Function
   distribution::TransitionDistribution
   enabled::Bool

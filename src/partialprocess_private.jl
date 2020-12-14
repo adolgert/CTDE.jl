@@ -1,7 +1,7 @@
 import Base: show
 
 # A Clock is a multiparameter clock that fires at intervals.
-type Clock
+struct Clock
 	intensity::Intensity
 	firing
 	name # A name assigned by the client API.
@@ -14,13 +14,13 @@ show(io::IO, c::Clock)=show(io, c.name)
 
 
 # Dependency Graph for causality in the process
-type ClockAdjacency
+struct ClockAdjacency
     hazard
     firing
     ClockAdjacency()=new()
 end
 
-type DependencyGraph
+struct DependencyGraph
 	place::Dict{Any,Vector{Clock}}
 	clock::Dict{Clock,ClockAdjacency}
 

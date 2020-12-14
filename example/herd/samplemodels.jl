@@ -70,7 +70,7 @@ end
 
 sirs_birth_death(cnt)=sirs_birth_death(cnt, [400.0, 0.6, 0, 365/14.0, 1/70.0])
 
-type SIRSToken
+struct SIRSToken
 end
 
 # SIRS with birth and death with exponential rates.

@@ -8,12 +8,12 @@ import CTDE: Update!, Reset!
 We make a SpeciesCount object so that the count of species
 is a type that is passed by reference.
 """
-type SpeciesCount
+struct SpeciesCount
 	v::Int
 	SpeciesCount(n)=new(n)
 end
 
-type StoichiometricOperator
+struct StoichiometricOperator
 	stoichiometry::Vector{Int}
 end
 
@@ -33,7 +33,7 @@ function BuildStoichiometricFiring(stoichiometry)
 end
 
 
-type SpeciesIntensity <: Intensity
+struct SpeciesIntensity <: Intensity
 	distribution::TransitionExponential
 	enabled::Bool
 	SpeciesIntensity(distribution)=new(distribution, false)
@@ -68,7 +68,7 @@ end
 
 # This starts the SIR example.
 
-type SIR
+struct SIR
 	s::SpeciesCount
 	i::SpeciesCount
 	r::SpeciesCount

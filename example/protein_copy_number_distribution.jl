@@ -148,7 +148,7 @@ function MakeProcess(parameters, rng, decay=true)
 end
 
 
-type Observations
+struct Observations
     row::Array{Int,1}
     leave::Array{Float64,1}
     Observations()=new(Array{Int,1}(), Array{Float64,1}())
