@@ -1,5 +1,7 @@
 using CTDE
-using Base.Test
+using Test
+using SafeTestsets
 
-# write your own tests here
-@test 1 == 1
+@testset "CTDE.jl" begin
+    include("test_prefixsearch.jl")
+end
