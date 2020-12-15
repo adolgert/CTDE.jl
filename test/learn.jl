@@ -1,41 +1,15 @@
-# This explains how to make a base interface and derive from it.
-# Not a class but an interface.
+using Distributions
+using Random
+using Plots
 
-# Base module defines interface
-module GSPN
-export all_transitions
-function all_transitions()
-	return "base gspn"
-end
-end
+rng = MersenneTwister(98274302)
+wei = Weibull(3, 2)
 
-# Derived module adds functions to methods of base.
-module Simple
-import GSPN.all_transitions
-export A, all_transitions
+x = zeros(100000)
+rand!(rng, wei, x)
+histogram(x)
 
-struct A
-end
-
-function all_transitions(x::A)
-	"Simple A"
-end
-
-end
-
-
-# Module using interface imports base, has access to derived.
-module WithIt
-using GSPN
-function fire(a)
-	println(all_transitions(a))
-end
-end
-
-
-using Simple
-using WithIt
-
-a=Simple.A()
-println(all_transitions(a))
-WithIt.fire(a)
+trunc_wei = truncated(wei, 1.5, Inf)
+y = zeros(100000)
+rand!(rng, trunc_wei, y)
+histogram(y)

@@ -26,6 +26,12 @@ some later time $t_0$, to perform three operations, sampling,
 integration of the hazard, and the inverse of integration of
 the hazard.
 
+We know we will have some standard functions on hand from the programming
+language libraries. These include the cumulative distribution function.
+Our first question is how to express the cumulative distribution
+function for a distribution that is shifted in time, so that we aren't
+counting from time zero.
+
 Given a cumulative distribution,we normally write
 \begin{equation}
   F(t)=1-e^{-\int_{0}^t \lambda(s)ds}\label{eqn:simplecdf}
@@ -35,7 +41,13 @@ or
   F(t)=\int_0^t f(s)ds,
 \end{equation}
 but for distributions in absolute time, meaning they are shifted
-by $t_e$, it is
+by $t_e$. The hazard rate is defined in terms of a zero time,
+so we subtract the enabling time.
+\begin{equation}
+  F(t;t_e)=1-e^{-\int_{t_e}^{t} \lambda(s-t_e)ds}
+\end{equation}
+Another way to write this is to assume the enabling time is included
+in the integral limits.
 \begin{equation}
   F(t,t_e)=1-e^{-\int_{0}^{t-t_e} \lambda(s)ds}
 \end{equation}
@@ -50,7 +62,7 @@ we normalize the distribution to its remaining probability. We can
 think of this best with survivals, $G(t)=1-F(t)$. In words, the probability of
 survival from $t_e$ to time $t$ ($G(t,t_e)$) is the probability
 of survival from $t_e$ to $t_0$ ($G(t_0,t_e$)
-\emph{and} the probability of survival from $t_0$ to $t$ ($G(t,_0,t_e)$).
+\emph{and} the probability of survival from $t_0$ to $t$ ($G(t_0,t_e)$).
 \begin{equation}
   G(t,t_e)=G(t_0,t_e)G(t,t_0,t_e)
 \end{equation}
@@ -72,7 +84,7 @@ In terms of cumulative distribution functions,
 \end{eqnarray}
 In terms of the function calls, that means
 \begin{lstlisting}
-  cdf(t, t0, te)=(cdf(t-te)-cdf(t0-te))/(1-cdf(t0,te))
+  cdf(t, t0, te)=(cdf(t-te)-cdf(t0-te))/(1-cdf(t0-te))
 \end{lstlisting}
 
 \begin{table}

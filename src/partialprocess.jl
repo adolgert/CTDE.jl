@@ -44,6 +44,12 @@ function Init(pp::PartialProcess)
 	end
 end
 
+"""
+This iterates over transitions. It passes the whole "clock", which
+is the transition, so that we have visibility into which transition is
+firing, if we want. What's needed from the clock is its intensity, which
+combines the distribution with a history of when it is on or off.
+"""
 function Hazards(f::Function, pp::PartialProcess, rng)
 	for clock in pp.clocks
 		if Enabled(clock.intensity)
