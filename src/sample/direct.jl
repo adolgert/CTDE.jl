@@ -10,13 +10,11 @@ struct MarkovDirect
 end
 
 
-function next(rm::MarkovDirect, process, rng)
+function next(rm::MarkovDirect, process, when, rng)
     total = 0.0
     cumulative = zeros(Float64, 0)
     keys = Array{Any,1}()
-    when = nothing
-    hazards(process, rng) do clock, distribution, now, enabled, rng2
-        when = now
+    hazards(process, rng) do clock, distribution, enabled, rng2
         total += params(distribution)[1]
         push!(cumulative, total)
         push!(keys, clock)
