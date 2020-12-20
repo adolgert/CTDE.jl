@@ -1,4 +1,6 @@
 # A Vector Addition System
+import Distributions
+
 
 """
 A `VectorAdditionSystem` is an older form of simulation that is a lot
@@ -21,31 +23,33 @@ function zero_state(vas::VectorAdditionSystem)
 end
 
 
-function hazards!(visitor::Function, vas::VectorAdditionSystem, state)
-    for rate_idx in eachindex(vas.rates)
-        if all(vas.transitions[:, rate_idx] .+ state >= 0)
-            cnt += 1
-            visitor(rate_idx, vas.rates[rate_idx], :Enabled, rng)
-        end
+function vas_input(vas::VectorAdditionSystem, transition_idx)
+    state_change = vas.transitions[:, transition_idx]
+    let delta = state_change
+        state -> begin state .+= state_change end
     end
 end
 
 
-function fire(vas::VectorAdditionSystem, state, transition_idx)
-    state .+= vas.transitions[:, transition_idx]
+function vas_initial(vas::VectorAdditionSystem, initial_state)
+    let initial = initial_state
+        state -> begin state .= initial end
+    end
 end
 
 
-function hazards!(visitor::Function, vas::VectorAdditionSystem, state, transition_idx)
-    delta_state = vas.transitions[:, transition_idx]
+function hazards!(visitor::Function, vas::VectorAdditionSystem, state, modify_state, rng)
+    state_prime = copy(state)
+    modify_state(state_prime)
     for rate_idx in eachindex(vas.rates)
         summed = vas.transitions[:, rate_idx] .+ state
+        summed_prime = vas.transitions[:, rate_idx] .+ state_prime
         was_enabled = all(summed .>= 0)
-        now_enabled = all(summed .+ delta_state .>= 0)
+        now_enabled = all(summed_prime .>= 0)
         if was_enabled && !now_enabled
-            visitor(rate_idx, vas.rates[rate_idx], :Disabled, rng)
+            visitor(rate_idx, Distributions.Exponential(vas.rates[rate_idx]), :Disabled, rng)
         elseif !was_enabled && now_enabled
-            visitor(rate_idx, vas.rates[rate_idx], :Enabled, rng)
+            visitor(rate_idx, Distributions.Exponential(vas.rates[rate_idx]), :Enabled, rng)
         end
     end
 end
