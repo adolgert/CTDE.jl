@@ -232,6 +232,16 @@ function visit_graph(DistType, seed, dist_cnt, edge_cnt, draw_cnt)
 end
 
 
+function visit_graph_short(seed, process, draw_cnt)
+    rng = MersenneTwister(seed)
+    when = 0.0
+    for draw_idx in 1:draw_cnt
+        when, which = visit(process, when, rng)
+        process.fired_transition = ifelse(isfinite(which), which, 1)
+    end
+end
+
+
 function iterate_graph(DistType, seed, dist_cnt, edge_cnt, draw_cnt)
     rng = MersenneTwister(seed)
     g = SimpleGraph{Int64}(dist_cnt, edge_cnt; seed = graph_seed)
@@ -245,6 +255,14 @@ function iterate_graph(DistType, seed, dist_cnt, edge_cnt, draw_cnt)
     end
 end
 
+function iterate_graph_short(seed, transitions, draw_cnt)
+    rng = MersenneTwister(seed)
+    when = 0.0
+    for draw_idx in 1:draw_cnt
+        when, which = iterate_over(transition_neighbors(transitions, 1), when, rng)
+        process.fired_transition = ifelse(isfinite(which), which, 1)
+    end
+end
 
 function iterate_graph_b(DistType, seed, dist_cnt, edge_cnt, draw_cnt)
     rng = MersenneTwister(seed)
@@ -275,7 +293,9 @@ median(res).time
 
 dista_cnt = 1000
 edgea_cnt = 100000
-drawa_cnt = 100
+drawa_cnt = 1000
+
+
 # 2.1 ms, 2.13 MB
 @benchmark visit_graph(Exponential{Float64}, same_seed, dista_cnt, edgea_cnt, drawa_cnt)
 # 2.8 ms, 2.94 MB
@@ -289,3 +309,27 @@ using ProfileView
 Profile.clear()
 @profile iterate_graph(Exponential{Float64}, same_seed, dista_cnt, edgea_cnt, drawa_cnt)
 ProfileView.view()
+@profview iterate_graph(Exponential{Float64}, same_seed, dista_cnt, edgea_cnt, drawa_cnt)
+ProfileSVG.view()
+
+g = SimpleGraph{Int64}(dista_cnt, edgea_cnt; seed = graph_seed)
+distribution_array = [Exponential(1) for i in 1:dista_cnt]
+transitions = GraphTransitions(g, distribution_array)
+process = GraphProcess(transitions, 1)
+# 5.8 ms, 11 MB
+@benchmark visit_graph_short(same_seed, process, drawa_cnt)
+# 3.5 ms, 8.4 MB
+@benchmark iterate_graph_short(same_seed, transitions, drawa_cnt)
+
+# And the general distribution
+all_arr = CTDist[Exponential(1) for i in 1:dista_cnt]
+all_trans = GraphTransitions(g, all_arr)
+all_process = GraphProcess(all_trans, 1)
+# 11 ms, 19 MB
+@benchmark visit_graph_short(same_seed, all_process, drawa_cnt)
+# 14 ms, 11 MB
+@benchmark iterate_graph_short(same_seed, all_trans, drawa_cnt)
+
+Profile.clear()
+@profile iterate_graph_short(same_seed, all_trans, 100*drawa_cnt)
+ProfileSVG.view()

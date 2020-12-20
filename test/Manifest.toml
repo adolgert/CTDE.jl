@@ -526,6 +526,12 @@ uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 deps = ["Printf"]
 uuid = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
 
+[[ProfileSVG]]
+deps = ["Colors", "FlameGraphs", "Profile", "UUIDs"]
+git-tree-sha1 = "8c2bc97ed6225a4c711417413e75d0636d92cbd0"
+uuid = "132c30aa-f267-4189-9183-c8a63c7e05e6"
+version = "0.2.0"
+
 [[ProfileView]]
 deps = ["Cairo", "Colors", "FileIO", "FlameGraphs", "Graphics", "Gtk", "GtkReactive", "InteractiveUtils", "IntervalSets", "Profile", "UUIDs"]
 git-tree-sha1 = "6425a41db34965372c1fc4d84b6dcb28530676eb"
