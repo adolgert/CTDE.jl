@@ -1,7 +1,7 @@
 import LightGraphs: SimpleGraph, add_vertices!, neighbors
 import Distributions: Uniform, Exponential, Weibull, Gamma, ContinuousUnivariateDistribution, params
 import Random: MersenneTwister, rand
-import Base: iterate, eltype
+import Base: iterate, eltype, length, size
 using Traceur
 using Profile
 using DataFrames
@@ -116,13 +116,40 @@ vertex_cnt = 10
 edge_cnt = 20
 g = SimpleGraph{Int64}(vertex_cnt, edge_cnt; seed = graph_seed)
 distribution_array = CTDist[Exponential(1) for i in 1:vertex_cnt]
-process = GraphProcess(GraphTransitions(g, distribution_array), 1)
+graph_transitions = GraphTransitions(g, distribution_array)
+process = GraphProcess(graph_transitions, 1)
 visit(process, 0.0, rng)
 @code_warntype visit(process, 0.0, rng)
 
 
 ### Version 4: Iterate over a SimpleGraph
 
+
+# This version of an iterator works like the enumerate iterator.
+struct TransitionNeighbors{I, Dist}
+    itr::I
+    distributions::Dist
+end
+
+function transition_neighbors(transitions::GraphTransitions{T}, fired) where T <: CTDist
+    TransitionNeighbors(
+        neighbors(transitions.g, fired),
+        transitions.distributions
+        )
+end
+
+length(tn::TransitionNeighbors) = length(tn.itr)
+size(tn::TransitionNeighbors) = size(tn.itr)
+function iterate(tn::TransitionNeighbors, state = 1)
+    n = iterate(tn.itr, state)
+    n === nothing && return n
+    (n[1], tn.distributions[n[1]]), n[2]
+end
+eltype(::Type{TransitionNeighbors{I,Dist}}) where {I,Dist} = Tuple{Int, Dist}
+IteratorSize(::Type{TransitionNeighbors{I,Dist}}) where {I,Dist} = IteratorSize(I)
+IteratorEltype(::Type{TransitionNeighbors{I,Dist}}) where {I,Dist} = IteratorEltype(I)
+
+# An attempt at an iterator that works over the process
 function iterate(process::GraphProcess{T}) where T <: CTDist
     inner_iterator = neighbors(process.transitions.g, process.fired_transition)
     iter_pair = iterate(inner_iterator)
@@ -153,6 +180,11 @@ iterate(process)
 iterate_over(process, 0.0, rng)
 @code_warntype iterate_over(process, 0.0, rng, Int64)
 
+tn = transition_neighbors(graph_transitions, 1)
+@code_warntype iterate(tn)
+iterate_over(transition_neighbors(graph_transitions, 1), 0.0, rng)
+@code_warntype iterate_over(transition_neighbors(graph_transitions, 1), 0.0, rng, Int64)
+@trace iterate_over(transition_neighbors(graph_transitions, 1), 0.0, rng, Int64)
 
 ### Now compare
 
@@ -171,7 +203,7 @@ function visit_array(DistType, seed, dist_cnt, draw_cnt)
     rng = MersenneTwister(seed)
     distribution_array = DistType[Exponential(1) for i in 1:dist_cnt]
     when = 0.0
-    for draw_idx in draw_cnt
+    for draw_idx in 1:draw_cnt
         when, which = visit(distribution_array, when, rng)
     end
 end
@@ -180,7 +212,7 @@ function iterate_array(DistType, seed, dist_cnt, draw_cnt)
     rng = MersenneTwister(seed)
     distribution_array = DistType[Exponential(1) for i in 1:dist_cnt]
     when = 0.0
-    for draw_idx in draw_cnt
+    for draw_idx in 1:draw_cnt
         when, which = iterate_over(enumerate(exponential_array), when, rng)
     end
 end
@@ -193,22 +225,35 @@ function visit_graph(DistType, seed, dist_cnt, edge_cnt, draw_cnt)
     process = GraphProcess(GraphTransitions(g, distribution_array), 1)
 
     when = 0.0
-    for draw_idx in draw_cnt
+    for draw_idx in 1:draw_cnt
         when, which = visit(process, when, rng)
         process.fired_transition = ifelse(isfinite(which), which, 1)
     end
 end
 
 
-
 function iterate_graph(DistType, seed, dist_cnt, edge_cnt, draw_cnt)
+    rng = MersenneTwister(seed)
+    g = SimpleGraph{Int64}(dist_cnt, edge_cnt; seed = graph_seed)
+    distribution_array = DistType[Exponential(1) for i in 1:dist_cnt]
+    transitions = GraphTransitions(g, distribution_array)
+
+    when = 0.0
+    for draw_idx in 1:draw_cnt
+        when, which = iterate_over(transition_neighbors(transitions, 1), when, rng)
+        process.fired_transition = ifelse(isfinite(which), which, 1)
+    end
+end
+
+
+function iterate_graph_b(DistType, seed, dist_cnt, edge_cnt, draw_cnt)
     rng = MersenneTwister(seed)
     g = SimpleGraph{Int64}(dist_cnt, edge_cnt; seed = graph_seed)
     distribution_array = DistType[Exponential(1) for i in 1:dist_cnt]
     process = GraphProcess(GraphTransitions(g, distribution_array), 1)
 
     when = 0.0
-    for draw_idx in draw_cnt
+    for draw_idx in 1:draw_cnt
         when, which = iterate_over(process, when, rng)
         process.fired_transition = ifelse(isfinite(which), which, 1)
     end
@@ -216,26 +261,31 @@ end
 
 
 const same_seed = 9237842
-const dist_cnt = 1000
-const draw_cnt = 1000
-# 68 μs, 84 kb
-res = @benchmark visit_array(Exponential{Float64}, same_seed, dist_cnt, draw_cnt)
+distb_cnt = 10000
+drawb_cnt = 100
+# 27 ms, 65.6 MB
+res = @benchmark visit_array(Exponential{Float64}, same_seed, distb_cnt, drawb_cnt)
 median(res).time
-# 98 μs, 138 kb
-@benchmark visit_array(CTDist, same_seed, dist_cnt, draw_cnt)
-# 49 μs, 36 kb
-@benchmark iterate_array(Exponential{Float64}, same_seed, dist_cnt, draw_cnt)
-# 52 μs, 52 kb
-@benchmark iterate_array(CTDist, same_seed, dist_cnt, draw_cnt)
+# 58 ms, 111 MB
+@benchmark visit_array(CTDist, same_seed, distb_cnt, drawb_cnt)
+# .38 ms, 322 kb
+@benchmark iterate_array(Exponential{Float64}, same_seed, distb_cnt, drawb_cnt)
+# .46 ms, 478 kb
+@benchmark iterate_array(CTDist, same_seed, distb_cnt, drawb_cnt)
 
-const dist_cnt = 1000
-const edge_cnt = 2000
-const draw_cnt = 1000
-# 91 μs, 143 kb
-@benchmark visit_graph(Exponential{Float64}, same_seed, dist_cnt, edge_cnt, draw_cnt)
-# 95 μs, 158 kb
-@benchmark visit_graph(CTDist, same_seed, dist_cnt, edge_cnt, draw_cnt)
-# 90 μs, 143 kb
-@benchmark iterate_graph(Exponential{Float64}, same_seed, dist_cnt, edge_cnt, draw_cnt)
-# 96 μs, 158 kb
-@benchmark iterate_graph(CTDist, same_seed, dist_cnt, edge_cnt, draw_cnt)
+dista_cnt = 1000
+edgea_cnt = 100000
+drawa_cnt = 100
+# 2.1 ms, 2.13 MB
+@benchmark visit_graph(Exponential{Float64}, same_seed, dista_cnt, edgea_cnt, drawa_cnt)
+# 2.8 ms, 2.94 MB
+@benchmark visit_graph(CTDist, same_seed, dista_cnt, edgea_cnt, drawa_cnt)
+# 2.0 ms, 1.93 MB
+@benchmark iterate_graph(Exponential{Float64}, same_seed, dista_cnt, edgea_cnt, drawa_cnt)
+# 3.4 ms, 2.34 MB
+@benchmark iterate_graph(CTDist, same_seed, dista_cnt, edgea_cnt, drawa_cnt)
+
+using ProfileView
+Profile.clear()
+@profile iterate_graph(Exponential{Float64}, same_seed, dista_cnt, edgea_cnt, drawa_cnt)
+ProfileView.view()
